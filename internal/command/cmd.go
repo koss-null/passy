@@ -2,6 +2,8 @@ package command
 
 import (
 	"flag"
+	"fmt"
+	"strings"
 
 	"github.com/koss-null/passy/internal/passgen"
 )
@@ -11,6 +13,9 @@ type Command struct {
 }
 
 func Parse() Command {
+	help := flag.Bool("h", false, "prints help page")
+	helpLong := flag.Bool("help", false, "prints help page")
+
 	interactive := flag.Bool("i", false, "runs Passy in interactive mode [not implemented yet]")
 
 	showKeys := flag.Bool("k", false, "show keys for all existing passwords")
@@ -22,6 +27,15 @@ func Parse() Command {
 	passLevelInsane := flag.Bool("insane", false, "composes password that is insanly complex")
 
 	flag.Parse()
+
+	if (help != nil && *help) || (helpLong != nil && *helpLong) {
+		sb := strings.Builder{}
+		sb.WriteString("Usage:\n")
+		flag.VisitAll(func(f *flag.Flag) {
+			sb.WriteString(fmt.Sprintf("  -%s, --%s  %s\n", f.Name, f.Name, f.Usage))
+		})
+		return Command{sb.String}
+	}
 
 	if composePass != nil && *composePass {
 		switch {
