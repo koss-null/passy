@@ -20,33 +20,38 @@ const (
 
 // GenReadablePass looks like *word**number**separator**word**number**separator**specialSymbol*
 func GenReadablePass() string {
+	const minWordLen = 12
 	rand.Seed(uint64(time.Now().UnixNano()))
 
 	word := make([]rune, 0)
 
 	// word
 	word = append(word, generatePronounceableWord()...)
-	// random number
-	if rand.Intn(3) == 1 { // 25%
-		word = append(word, randomNumber())
-		if rand.Intn(3) == 1 { // 25%
-			word = append(word, randomNumber())
-			if rand.Intn(3) == 1 { // 25%
-				word = append(word, randomNumber())
-			}
-		}
-	}
-
 	// separator
 	word = append(word, randomSeparator())
 	// word
 	word = append(word, generatePronounceableWord()...)
 
-	// random number
-	word = append(word, randomNumber())
-	word = append(word, randomNumber())
-	// special symbol
-	word = append(word, randomSpecialSymbol())
+	num := func() []rune {
+		num := []rune{randomNumber()}
+		if rand.Intn(2) == 1 { // 50%
+			num = append(num, randomNumber())
+			if rand.Intn(2) == 1 { // 25%
+				num = append(num, randomNumber())
+			}
+		}
+		return num
+	}()
+	randomPlace := rand.Intn(len(word))
+	word = append(word[:randomPlace], append(num, word[randomPlace:]...)...)
+
+	randomPlace = rand.Intn(len(word))
+	word = append(word[:randomPlace], append([]rune{randomSpecialSymbol()}, word[randomPlace:]...)...)
+	for len(word) < minWordLen {
+		randomPlace = rand.Intn(len(word))
+		word = append(word[:randomPlace], append([]rune{randomSpecialSymbol()}, word[randomPlace:]...)...)
+	}
+
 	return string(word)
 }
 
@@ -139,11 +144,11 @@ func generatePronounceableWord() []rune {
 	)
 
 	word := make([]rune, 0, 20)
-	length := rand.Intn(maxWordLen-minWordLen+1) + minWordLen
+	length := rand.Intn(maxWordLen-minWordLen) + minWordLen
 	for len(word) < length {
 		word = append(word, randomSyllable()...)
 	}
-	return word[:maxWordLen]
+	return word[:length]
 }
 
 func randomVowel() rune {
