@@ -21,7 +21,7 @@ const (
 // GenReadablePass looks like *word**number**separator**word**number**separator**specialSymbol*
 func GenReadablePass() string {
 	const minWordLen = 12
-	rand.Seed(uint64(time.Now().UnixNano()))
+	rand.Seed(uint64(time.Now().UnixNano()) + 44739242)
 
 	word := make([]rune, 0)
 
@@ -57,15 +57,42 @@ func GenReadablePass() string {
 
 func GenSafePass() string {
 	const (
-		minLength = 14
-		maxLength = 18
+		minLength = 18
+		maxLength = 25
 	)
-	rand.Seed(uint64(time.Now().UnixNano()))
+	rand.Seed(uint64(time.Now().UnixNano() + 699050))
+
+	word := make([]rune, 0)
+	// word
+	word = append(word, generatePronounceableWord()...)
+	// separator
+	word = append(word, randomSeparator())
+	// word
+	word = append(word, generatePronounceableWord()...)
+	// separator
+	word = append(word, randomSeparator())
+	// word
+	word = append(word, generatePronounceableWord()...)
+
+	num := func() []rune {
+		num := []rune{randomNumber()}
+		if rand.Intn(2) == 1 { // 50%
+			num = append(num, randomNumber())
+			if rand.Intn(2) == 1 { // 25%
+				num = append(num, randomNumber())
+			}
+		}
+		return num
+	}()
+	randomPlace := rand.Intn(len(word))
+	word = append(word[:randomPlace], append(num, word[randomPlace:]...)...)
+	randomPlace = rand.Intn(len(word))
+	word = append(word[:randomPlace], append([]rune{randomVerySpecialSymbol()}, word[randomPlace:]...)...)
 
 	length := rand.Intn(maxLength-minLength) + minLength
-	word := make([]rune, length)
-	for i := range word {
-		word[i] = randomSafeLetter()
+	for i := len(word); i < length; i++ {
+		randomPlace = rand.Intn(len(word))
+		word = append(word[:randomPlace], append([]rune{randomSafeLetter()}, word[randomPlace:]...)...)
 	}
 	return string(word)
 }
@@ -75,7 +102,7 @@ func GenInsanePass() string {
 		minLength = 27
 		maxLength = 40
 	)
-	rand.Seed(uint64(time.Now().UnixNano()))
+	rand.Seed(uint64(time.Now().UnixNano()) + 44738242)
 
 	length := rand.Intn(maxLength-minLength) + minLength
 	word := make([]rune, length)
@@ -88,18 +115,14 @@ func GenInsanePass() string {
 func randomSafeLetter() rune {
 	letterType := rand.Intn(100)
 	switch {
-	case letterType < 30:
-		return randomVowel()
-	case letterType < 60:
-		return randomConsonant()
-	case letterType < 67:
-		return randomSeparator()
-	case letterType < 82:
-		return randomNumber()
-	case letterType < 90:
+	case letterType < 50:
 		return randomSpecialSymbol()
-	default:
+	case letterType < 66:
 		return randomVerySpecialSymbol()
+	case letterType < 88:
+		return randomNumber()
+	default:
+		return randomSeparator()
 	}
 }
 
