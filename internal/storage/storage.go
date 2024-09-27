@@ -84,7 +84,7 @@ func (s *Storage) Store(message string) error {
 		return fmt.Errorf("error reading data.dat: %v", err)
 	}
 
-	return nil
+	return commitRepo(s.Cfg.GitRepoPath, tempDir)
 }
 
 // readKey reads a key from a file or downloads it if it's a URL

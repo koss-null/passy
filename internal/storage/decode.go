@@ -15,7 +15,11 @@ type Folder struct {
 
 // returns map key-value
 func (s *Storage) Decrypt() (*Folder, error) {
-	s.Update()
+	err := s.Update()
+	if err != nil {
+		return nil, err
+	}
+
 	var head Folder
 	// TODO: decrypt data
 	decrypted := s.Data

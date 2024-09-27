@@ -127,7 +127,7 @@ func savePass(key, pass string) func() string {
 	}
 
 	if err := st.Encrypt(key, pass, "", nil); err != nil {
-		return errors.Wrap(err, "failed to decrypt").Error
+		return errors.Wrap(err, "failed to encrypt").Error
 	}
 
 	return func() string { return fmt.Sprintf("the password %q was added successfully", pass) }
