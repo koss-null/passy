@@ -55,9 +55,9 @@ func (f *Folder) Add(folderPath, key, pass string) error {
 				return nil
 			}
 			if f.SubFolder == nil {
-				f.SubFolder = &Folder{Name: path[1]}
+				f.SubFolder = []*Folder{{Name: path[1]}}
 			}
-			return f.SubFolder.Add(strings.Join(path[1:], ""), key, pass)
+			return f.SubFolder[0].Add(strings.Join(path[1:], ""), key, pass)
 		}
 		return errors.New("")
 	}

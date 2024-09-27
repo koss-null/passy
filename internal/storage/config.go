@@ -60,9 +60,13 @@ func checkConfigExistOrCreateNew(configFilePath string) (err error) {
 		if !errors.Is(err, os.ErrNotExist) {
 			return fmt.Errorf("error opening config file: %v", err)
 		}
+
+		if err := os.MkdirAll(filepath.Dir(configFilePath), os.ModePerm); err != nil {
+			return fmt.Errorf("error creating config directory: %v", err)
+		}
 		var configFile *os.File
 		if configFile, err = os.Create(configFilePath); err != nil {
-			return fmt.Errorf("error creating new config", err)
+			return fmt.Errorf("error creating new config: %v", err)
 		}
 
 		if _, err = configFile.WriteString(mockConfig); err != nil {
