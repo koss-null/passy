@@ -3,6 +3,8 @@ package command
 import (
 	"flag"
 	"fmt"
+	"io/fs"
+	"os"
 	"strings"
 
 	"github.com/pkg/errors"
@@ -25,6 +27,7 @@ func Parse() Command {
 	getPass := flag.String("p", "", "show pass by key")
 	addPass := flag.String("a", "", "add password by key, key separator is '.' (supports pass level key to generate the pass automatically)")
 	thePass := flag.String("pass", "", "[-a ] set password")
+	keyGen := flag.String("keygen", "", "generate the private encryption key on given path")
 
 	composePass := flag.Bool("c", false, "compose password (safe level by default)")
 	passLevelReadable := flag.Bool("readable", false, "[-c|-a ] compose password that is readable, easy to remember and pretty safe")
@@ -83,6 +86,19 @@ func Parse() Command {
 			pass = *thePass
 		}
 		return Command{savePass(*addPass, pass)}
+	}
+
+	if keyGen != nil && *keyGen != "" {
+		key, err := passgen.GenerateAESKey(32)
+		if err != nil {
+			return Command{err.Error}
+		}
+
+		err = os.WriteFile(*keyGen, key, fs.ModePerm)
+		if err != nil {
+			return Command{err.Error}
+		}
+		return Command{func() string { return "the file was successfully created: " + *keyGen }}
 	}
 
 	return Command{helpString}

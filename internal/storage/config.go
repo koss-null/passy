@@ -15,14 +15,11 @@ const defaultConfigFile = "~/.config/passy/config.toml"
 
 const mockConfig = `
 PrivKeyPath = "/path/to/private/key.pem" # can be https link
-PubKeyPath = "/path/to/public/key.pem" # can be https link
 GitRepoPath = "https://github.com/user/repository.git"
 `
 
 type Config struct {
 	PrivKeyPath string
-	PubKeyPath  string
-
 	GitRepoPath string
 }
 
@@ -92,11 +89,6 @@ func validateConfig(config *Config) error {
 	// Validate PrivKeyPath
 	if err := validateFileExists(config.PrivKeyPath); err != nil {
 		return fmt.Errorf("invalid private key path: %v", err)
-	}
-
-	// Validate PubKeyPath
-	if err := validateFileExists(config.PubKeyPath); err != nil {
-		return fmt.Errorf("invalid public key path: %v", err)
 	}
 
 	// Validate GitRepoPath

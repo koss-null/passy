@@ -1,6 +1,7 @@
 package storage
 
 import (
+	"encoding/base64"
 	"fmt"
 	"io"
 	"io/fs"
@@ -14,8 +15,7 @@ import (
 // Storage struct to hold the data read from the file
 type Storage struct {
 	PrivKey []byte
-	PubKey  []byte
-	Data    []byte
+	Data    string
 	Cfg     *Config
 }
 
@@ -27,20 +27,13 @@ func New(cfg *Config) (*Storage, error) {
 		return nil, fmt.Errorf("error reading private key: %v", err)
 	}
 
-	// Read the public key
-	pubKey, err := readKey(cfg.PubKeyPath)
-	if err != nil {
-		return nil, fmt.Errorf("error reading public key: %v", err)
-	}
-
 	storage := &Storage{
 		PrivKey: privKey,
-		PubKey:  pubKey,
 		Cfg:     cfg,
 	}
-	if err := storage.Update(); err != nil {
-		return nil, fmt.Errorf("error updating repo data: %v", err)
-	}
+	// if err := storage.Update(); err != nil {
+	// return nil, fmt.Errorf("error updating repo data: %v", err)
+	// }
 	return storage, nil
 }
 
@@ -61,9 +54,13 @@ func (s *Storage) Update() error {
 	dataFilePath := filepath.Join(tempDir, "data.dat")
 	data, err := os.ReadFile(dataFilePath)
 	if err != nil {
+		if _, ok := err.(*os.PathError); ok {
+			s.Data = ""
+			return nil
+		}
 		return fmt.Errorf("error reading data.dat: %v", err)
 	}
-	s.Data = data
+	s.Data = base64.StdEncoding.EncodeToString(data)
 	return nil
 }
 
@@ -83,7 +80,7 @@ func (s *Storage) Store(message string) error {
 
 	// Write the data.dat file
 	dataFilePath := filepath.Join(tempDir, "data.dat")
-	if err := os.WriteFile(dataFilePath, s.Data, fs.ModeType); err != nil {
+	if err := os.WriteFile(dataFilePath, []byte(s.Data), fs.ModePerm); err != nil {
 		return fmt.Errorf("error reading data.dat: %v", err)
 	}
 

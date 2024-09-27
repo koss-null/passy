@@ -1,7 +1,12 @@
 package storage
 
 import (
+	"crypto/aes"
+	"crypto/cipher"
+	"crypto/rand"
+	"encoding/base64"
 	"encoding/json"
+	"io"
 	"strings"
 
 	"github.com/pkg/errors"
@@ -11,9 +16,13 @@ const defaultCommitMessage = "nothing important"
 
 // Encrypt encodes the folder paths and stores the data in a repository
 func (s *Storage) Encrypt(key, pass, encryptionPass string, commitMessage *string) error {
-	data, err := s.Decrypt()
-	if err != nil {
-		return errors.Wrap(err, "failed to get current passwords")
+	data := &Folder{Name: "", SubFolder: []*Folder{}, Key2Pass: make(map[string]string)}
+	if s.Data != "" {
+		var err error
+		data, err = s.Decrypt()
+		if err != nil {
+			return errors.Wrap(err, "failed to get current passwords")
+		}
 	}
 
 	path := strings.Split(key, ".")
@@ -34,12 +43,40 @@ func (s *Storage) Encrypt(key, pass, encryptionPass string, commitMessage *strin
 	if err != nil {
 		return errors.Wrap(err, "failed to marshal new password data")
 	}
-	// TODO: encode data
-	s.Data = byteData
+
+	encryptedData, err := s.encrypt(byteData)
+	if err != nil {
+		return errors.Wrap(err, "failed to encrypt new password data")
+	}
+	s.Data = base64.StdEncoding.EncodeToString(encryptedData)
 
 	message := defaultCommitMessage
 	if commitMessage != nil {
 		message = *commitMessage
 	}
 	return s.Store(message)
+}
+
+func (s *Storage) encrypt(data []byte) ([]byte, error) {
+	// Create a new AES cipher
+	block, err := aes.NewCipher(s.PrivKey)
+	if err != nil {
+		return nil, err
+	}
+
+	// GCM mode requires a nonce (number used once)
+	gcm, err := cipher.NewGCM(block)
+	if err != nil {
+		return nil, err
+	}
+
+	nonce := make([]byte, gcm.NonceSize())
+	if _, err := io.ReadFull(rand.Reader, nonce); err != nil {
+		return nil, err
+	}
+
+	// Encrypt the plaintext
+	cipherText := gcm.Seal(nonce, nonce, data, nil)
+	// Return the base64 encoded ciphertext
+	return []byte(base64.StdEncoding.EncodeToString(cipherText)), nil
 }
