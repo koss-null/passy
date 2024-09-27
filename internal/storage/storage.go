@@ -6,8 +6,9 @@ import (
 	"io/fs"
 	"net/http"
 	"os"
-	"os/exec"
 	"path/filepath"
+
+	git "github.com/go-git/go-git/v5"
 )
 
 // Storage struct to hold the data read from the file
@@ -37,7 +38,9 @@ func New(cfg *Config) (*Storage, error) {
 		PubKey:  pubKey,
 		Cfg:     cfg,
 	}
-	storage.Update()
+	if err := storage.Update(); err != nil {
+		return nil, fmt.Errorf("error updating repo data: %v", err)
+	}
 	return storage, nil
 }
 
@@ -84,7 +87,7 @@ func (s *Storage) Store(message string) error {
 		return fmt.Errorf("error reading data.dat: %v", err)
 	}
 
-	return commitRepo(s.Cfg.GitRepoPath, tempDir)
+	return commitRepo(tempDir, message)
 }
 
 // readKey reads a key from a file or downloads it if it's a URL
@@ -117,26 +120,48 @@ func downloadFile(url string) ([]byte, error) {
 
 // cloneRepo clones the specified Git repository into the given directory
 func cloneRepo(repoPath, destDir string) error {
-	cmd := exec.Command("git", "clone", repoPath, destDir)
-	if err := cmd.Run(); err != nil {
+	_, err := git.PlainClone(destDir, false, &git.CloneOptions{
+		URL: repoPath,
+	})
+	if err != nil {
 		return fmt.Errorf("failed to clone repository: %v", err)
 	}
 	return nil
 }
 
+// commitRepo commits changes to the repository with the specified commit message
 func commitRepo(repoPath, commitMsg string) error {
-	cmd := exec.Command("git", "-C", repoPath, "add", "data.dat")
-	if err := cmd.Run(); err != nil {
+	// Open the existing repository
+	repo, err := git.PlainOpen(repoPath)
+	if err != nil {
+		return fmt.Errorf("failed to open repository: %v", err)
+	}
+
+	// Stage the changes
+	w, err := repo.Worktree()
+	if err != nil {
+		return fmt.Errorf("failed to get worktree: %v", err)
+	}
+
+	// Add changes to the staging area
+	_, err = w.Add("data.dat")
+	if err != nil {
 		return fmt.Errorf("failed to add changes to the repository: %v", err)
 	}
 
-	cmd = exec.Command("git", "-C", repoPath, "commit", "-m", commitMsg)
-	if err := cmd.Run(); err != nil {
+	// Commit the changes
+	_, err = w.Commit(commitMsg, &git.CommitOptions{
+		All: true,
+	})
+	if err != nil {
 		return fmt.Errorf("failed to commit changes to the repository: %v", err)
 	}
 
-	cmd = exec.Command("git", "-C", repoPath, "push")
-	if err := cmd.Run(); err != nil {
+	// Push the changes
+	err = repo.Push(&git.PushOptions{
+		RemoteName: "origin",
+	})
+	if err != nil {
 		return fmt.Errorf("failed to push changes to the repository: %v", err)
 	}
 
