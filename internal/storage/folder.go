@@ -11,25 +11,46 @@ type Folder struct {
 	Pass      string
 }
 
-func (f *Folder) String() string {
+func (f *Folder) String(prefix string) func() string {
 	const line = "-------------------------------\n"
 
 	sb := strings.Builder{}
 
 	if f.Pass != "" {
 		sb.WriteString(line)
-		sb.WriteString(f.Name + "\n")
+		sb.WriteString(prefix + " " + f.Name + "\n")
 		sb.WriteString(line)
 		sb.WriteString(f.Pass + "\n")
 	}
 
 	if f.SubFolder != nil {
 		for _, sf := range f.SubFolder {
-			sb.WriteString(sf.String())
+			sb.WriteString(sf.String(prefix + ">" + f.Name)())
 		}
 	}
 
-	return sb.String()
+	return sb.String
+}
+
+func (f *Folder) SecureString(prefix string) func() string {
+	const line = "-------------------------------\n"
+
+	sb := strings.Builder{}
+
+	if f.Pass != "" {
+		sb.WriteString(line)
+		sb.WriteString(prefix + " " + f.Name + "\n")
+		sb.WriteString(line)
+		sb.WriteString("●●●●●●●●●" + "\n")
+	}
+
+	if f.SubFolder != nil {
+		for _, sf := range f.SubFolder {
+			sb.WriteString(sf.SecureString(prefix + ">" + f.Name)())
+		}
+	}
+
+	return sb.String
 }
 
 func (f *Folder) Add(folderPath, pass string) error {
@@ -37,26 +58,29 @@ func (f *Folder) Add(folderPath, pass string) error {
 		return errors.New("should add to the head only")
 	}
 
-	path := strings.Split(folderPath, "->")
+	path := strings.Split(folderPath, ">")
 	cf := f
 
 	for j, folderName := range path {
+		found := false
 		for i := range cf.SubFolder {
 			if cf.SubFolder[i].Name == folderName {
 				cf = cf.SubFolder[i]
+				found = true
 				break
 			}
 		}
-		for _, newFolderName := range path[j:] {
-			newFolder := &Folder{
-				Name:      newFolderName,
-				SubFolder: make([]*Folder, 0),
-				Pass:      "",
+		if !found {
+			for _, newFolderName := range path[j:] {
+				newFolder := &Folder{
+					Name:      newFolderName,
+					SubFolder: make([]*Folder, 0),
+					Pass:      "",
+				}
+				cf.SubFolder = append(cf.SubFolder, newFolder)
+				cf = newFolder
 			}
-			cf.SubFolder = append(cf.SubFolder, newFolder)
-			cf = newFolder
 		}
-		break
 	}
 
 	cf.Pass = pass
