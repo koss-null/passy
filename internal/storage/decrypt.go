@@ -21,6 +21,7 @@ func (s *Storage) Decrypt() (*Folder, error) {
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to decode pass data")
 	}
+	fmt.Println(string(decrypted))
 
 	var head Folder
 	if err := json.Unmarshal(decrypted, &head); err != nil {

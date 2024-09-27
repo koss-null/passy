@@ -25,7 +25,7 @@ func Parse() Command {
 
 	showKeys := flag.Bool("k", false, "show keys for all existing passwords")
 	getPass := flag.String("p", "", "show pass by key")
-	addPass := flag.String("a", "", "add password by key, key separator is '.' (supports pass level key to generate the pass automatically)")
+	addPass := flag.String("a", "", "add password by key, key separator is '->' (supports pass level key to generate the pass automatically)")
 	thePass := flag.String("pass", "", "[-a ] set password")
 	keyGen := flag.String("keygen", "", "generate the private encryption key on given path")
 

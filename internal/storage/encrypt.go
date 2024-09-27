@@ -6,7 +6,6 @@ import (
 	"crypto/rand"
 	"encoding/json"
 	"io"
-	"strings"
 
 	"github.com/pkg/errors"
 )
@@ -20,7 +19,7 @@ func (s *Storage) Encrypt(key, pass, encryptionPass string, commitMessage *strin
 		return errors.Wrap(err, "failed to update data from the repo during encryption")
 	}
 
-	data := &Folder{Name: "", SubFolder: []*Folder{}, Key2Pass: make(map[string]string)}
+	data := &Folder{Name: "", SubFolder: []*Folder{}}
 	if s.Data != "" {
 		var err error
 		data, err = s.Decrypt()
@@ -29,20 +28,9 @@ func (s *Storage) Encrypt(key, pass, encryptionPass string, commitMessage *strin
 		}
 	}
 
-	path := strings.Split(key, ".")
-	for _, folder := range path {
-		for _, sf := range data.SubFolder {
-			if sf.Name == folder {
-				data = sf
-				break
-			}
-		}
-		newFolder := &Folder{Name: folder, Key2Pass: make(map[string]string)}
-		data.SubFolder = append(data.SubFolder, newFolder)
-		data = newFolder
+	if err := data.Add(key, pass); err != nil {
+		return errors.Wrap(err, "failed to add key and pass to the data map")
 	}
-
-	data.Key2Pass[path[len(path)-1]] = pass
 	byteData, err := json.Marshal(data)
 	if err != nil {
 		return errors.Wrap(err, "failed to marshal new password data")
