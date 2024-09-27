@@ -20,7 +20,7 @@ func (f *Folder) String() string {
 	sb.WriteString(f.Name + "\n")
 	sb.WriteString(line)
 	for k, v := range f.Key2Pass {
-		sb.WriteString("\t" + k + ":\n" + v + "\n")
+		sb.WriteString(k + ":\n" + v + "\n")
 	}
 
 	if f.SubFolder != nil {

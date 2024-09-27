@@ -1,21 +1,22 @@
 package passgen
 
 import (
+	"encoding/base64"
 	"time"
 
 	"golang.org/x/exp/rand"
 )
 
-const (
-	vowels             = "aeiouAEIOU"
-	consonants         = "bcdfghjklmnpqrstvwxyzBCDFGHJKLMNPQRSTVWXYZ"
-	numbers            = "1234567890"
-	separators         = `_-.`
-	specialSymbols     = `!@#$%&?`
-	verySpecialSymbols = `*^()+={[]}'";:/|\`
-	russianLetters     = "абвгдежзийклмнопрстуфхцчъыьэюя"
-	japaneeseLetters   = "あいえおかきくけこさしすせそたちつてとな漢字一二三四五六七八九十"
-	arabLetters        = "أبجدهوزحطيكلمنسعفصقرشتثخذضظغ"
+var (
+	vowels             = []rune("aeiouAEIOU")
+	consonants         = []rune("bcdfghjklmnpqrstvwxyzBCDFGHJKLMNPQRSTVWXYZ")
+	numbers            = []rune("1234567890")
+	separators         = []rune(`_-.`)
+	specialSymbols     = []rune(`!@#$%&?`)
+	verySpecialSymbols = []rune(`*^()+={[]}'";:/|\~<>`)
+	wierdSignsPack1    = []rune("ÀÁÂÃÄÅÆÇÈÉÊËÌÍÎÏÐÑÒÓÔÕÖØÙÚÛÜÝÞß")
+	wierdSignsPart2    = []rune("¡¢£¤¥§©¦¨«¬®¯°µ¶·¸»¿")
+	wierdSignsPack3    = []rune("²³¹ºª¼½¾×±")
 )
 
 // GenReadablePass looks like *word**number**separator**word**number**separator**specialSymbol*
@@ -52,7 +53,7 @@ func GenReadablePass() string {
 		word = append(word[:randomPlace], append([]rune{randomSpecialSymbol()}, word[randomPlace:]...)...)
 	}
 
-	return string(word)
+	return base64.StdEncoding.EncodeToString([]byte(string(word)))
 }
 
 func GenSafePass() string {
@@ -94,7 +95,7 @@ func GenSafePass() string {
 		randomPlace = rand.Intn(len(word))
 		word = append(word[:randomPlace], append([]rune{randomSafeLetter()}, word[randomPlace:]...)...)
 	}
-	return string(word)
+	return base64.StdEncoding.EncodeToString([]byte(string(word)))
 }
 
 func GenInsanePass() string {
@@ -142,11 +143,11 @@ func randomInsaneLetter() rune {
 	case letterType < 66:
 		return randomVerySpecialSymbol()
 	case letterType < 77:
-		return randomRussianLetter()
+		return randomWierdPack1()
 	case letterType < 88:
-		return randomJapaneseLetter()
+		return randomWierdPack2()
 	default:
-		return randomArabicLetter()
+		return randomWierdPack3()
 	}
 }
 
@@ -198,14 +199,14 @@ func randomVerySpecialSymbol() rune {
 	return rune(verySpecialSymbols[rand.Intn(len(verySpecialSymbols))])
 }
 
-func randomRussianLetter() rune {
-	return rune(russianLetters[rand.Intn(len(russianLetters))])
+func randomWierdPack1() rune {
+	return wierdSignsPack1[rand.Intn(len(wierdSignsPack1))]
 }
 
-func randomJapaneseLetter() rune {
-	return rune(japaneeseLetters[rand.Intn(len(japaneeseLetters))])
+func randomWierdPack2() rune {
+	return wierdSignsPart2[rand.Intn(len(wierdSignsPart2))]
 }
 
-func randomArabicLetter() rune {
-	return rune(arabLetters[rand.Intn(len(arabLetters))])
+func randomWierdPack3() rune {
+	return wierdSignsPack3[rand.Intn(len(wierdSignsPack3))]
 }
