@@ -4,7 +4,6 @@ import (
 	"crypto/aes"
 	"crypto/cipher"
 	"crypto/rand"
-	"encoding/base64"
 	"encoding/json"
 	"io"
 	"strings"
@@ -16,6 +15,11 @@ const defaultCommitMessage = "nothing important"
 
 // Encrypt encodes the folder paths and stores the data in a repository
 func (s *Storage) Encrypt(key, pass, encryptionPass string, commitMessage *string) error {
+	err := s.Update()
+	if err != nil {
+		return errors.Wrap(err, "failed to update data from the repo during encryption")
+	}
+
 	data := &Folder{Name: "", SubFolder: []*Folder{}, Key2Pass: make(map[string]string)}
 	if s.Data != "" {
 		var err error
@@ -48,7 +52,7 @@ func (s *Storage) Encrypt(key, pass, encryptionPass string, commitMessage *strin
 	if err != nil {
 		return errors.Wrap(err, "failed to encrypt new password data")
 	}
-	s.Data = base64.StdEncoding.EncodeToString(encryptedData)
+	s.Data = string(encryptedData)
 
 	message := defaultCommitMessage
 	if commitMessage != nil {
@@ -77,6 +81,5 @@ func (s *Storage) encrypt(data []byte) ([]byte, error) {
 
 	// Encrypt the plaintext
 	cipherText := gcm.Seal(nonce, nonce, data, nil)
-	// Return the base64 encoded ciphertext
-	return []byte(base64.StdEncoding.EncodeToString(cipherText)), nil
+	return []byte(cipherText), nil
 }

@@ -31,9 +31,6 @@ func New(cfg *Config) (*Storage, error) {
 		PrivKey: privKey,
 		Cfg:     cfg,
 	}
-	// if err := storage.Update(); err != nil {
-	// return nil, fmt.Errorf("error updating repo data: %v", err)
-	// }
 	return storage, nil
 }
 
