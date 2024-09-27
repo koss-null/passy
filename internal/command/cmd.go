@@ -5,7 +5,10 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/pkg/errors"
+
 	"github.com/koss-null/passy/internal/passgen"
+	"github.com/koss-null/passy/internal/storage"
 )
 
 type Command struct {
@@ -20,11 +23,13 @@ func Parse() Command {
 
 	showKeys := flag.Bool("k", false, "show keys for all existing passwords")
 	getPass := flag.String("p", "", "show pass by key")
+	addPass := flag.String("a", "", "add password by key, key separator is '.' (supports pass level key to generate the pass automatically)")
+	thePass := flag.String("pass", "", "[-a ] set password")
 
 	composePass := flag.Bool("c", false, "compose password (safe level by default)")
-	passLevelReadable := flag.Bool("readable", false, "[-c ] compose password that is readable, easy to remember and pretty safe")
-	passLevelSafe := flag.Bool("safe", false, "compose password that is safe and have chances to be remembered")
-	passLevelInsane := flag.Bool("insane", false, "compose password that is insanly complex")
+	passLevelReadable := flag.Bool("readable", false, "[-c|-a ] compose password that is readable, easy to remember and pretty safe")
+	passLevelSafe := flag.Bool("safe", false, "[-c|-a ] compose password that is safe and have chances to be remembered")
+	passLevelInsane := flag.Bool("insane", false, "[-c|-a ] compose password that is insanly complex")
 
 	flag.Parse()
 
@@ -50,11 +55,34 @@ func Parse() Command {
 	}
 
 	if showKeys != nil && *showKeys {
-		return Command{func() string { return "not implemented" }}
+		flds, err := folders()
+		if err != nil {
+			return Command{err.Error}
+		}
+		return Command{flds.String}
 	}
 
 	if getPass != nil && *getPass != "" {
 		return Command{func() string { return "not implemented" }}
+	}
+
+	if addPass != nil && *addPass != "" {
+		var pass string
+		switch {
+		case passLevelReadable != nil && *passLevelReadable:
+			pass = passgen.GenReadablePass()
+		case passLevelSafe != nil && *passLevelSafe:
+			pass = passgen.GenReadablePass()
+		case passLevelInsane != nil && *passLevelInsane:
+			pass = passgen.GenInsanePass()
+		default:
+			return Command{func() string { return "please set the password strength option or [--pass] flag" }}
+		}
+
+		if thePass != nil && *thePass != "" {
+			pass = *thePass
+		}
+		return Command{savePass(*addPass, pass)}
 	}
 
 	return Command{helpString}
@@ -67,4 +95,40 @@ func helpString() string {
 		sb.WriteString(fmt.Sprintf("  -%s, --%s  %s\n", f.Name, f.Name, f.Usage))
 	})
 	return sb.String()
+}
+
+func folders() (*storage.Folder, error) {
+	cfg, err := storage.ParseConfig()
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to parse config")
+	}
+
+	st, err := storage.New(cfg)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to init storage")
+	}
+
+	folders, err := st.Decrypt()
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to decrypt")
+	}
+	return folders, nil
+}
+
+func savePass(key, pass string) func() string {
+	cfg, err := storage.ParseConfig()
+	if err != nil {
+		return errors.Wrap(err, "failed to parse config").Error
+	}
+
+	st, err := storage.New(cfg)
+	if err != nil {
+		return errors.Wrap(err, "failed to init storage").Error
+	}
+
+	if err := st.Encrypt(key, pass, "", nil); err != nil {
+		return errors.Wrap(err, "failed to decrypt").Error
+	}
+
+	return func() string { return fmt.Sprintf("the password %q was added successfully", pass) }
 }

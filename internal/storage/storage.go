@@ -2,6 +2,8 @@ package storage
 
 import (
 	"fmt"
+	"io"
+	"io/fs"
 	"net/http"
 	"os"
 	"os/exec"
@@ -16,8 +18,8 @@ type Storage struct {
 	Cfg     *Config
 }
 
-// NewStorage initializes a new Storage instance
-func NewStorage(cfg *Config) (*Storage, error) {
+// New initializes a new Storage instance
+func New(cfg *Config) (*Storage, error) {
 	// Read the private key
 	privKey, err := readKey(cfg.PrivKeyPath)
 	if err != nil {
@@ -30,32 +32,59 @@ func NewStorage(cfg *Config) (*Storage, error) {
 		return nil, fmt.Errorf("error reading public key: %v", err)
 	}
 
+	storage := &Storage{
+		PrivKey: privKey,
+		PubKey:  pubKey,
+		Cfg:     cfg,
+	}
+	storage.Update()
+	return storage, nil
+}
+
+// Update updates data inside of a storage from the git repo.
+func (s *Storage) Update() error {
 	// Clone the Git repository to a temporary directory
 	tempDir, err := os.MkdirTemp("", "repo")
 	if err != nil {
-		return nil, fmt.Errorf("error creating temporary directory: %v", err)
+		return fmt.Errorf("error creating temporary directory: %v", err)
 	}
-	defer os.RemoveAll(tempDir) // Clean up the temporary directory
 
 	// Clone the repository
-	if err := cloneRepo(cfg.GitRepoPath, tempDir); err != nil {
-		return nil, err
+	if err := cloneRepo(s.Cfg.GitRepoPath, tempDir); err != nil {
+		return err
 	}
 
 	// Read the data.dat file
 	dataFilePath := filepath.Join(tempDir, "data.dat")
 	data, err := os.ReadFile(dataFilePath)
 	if err != nil {
-		return nil, fmt.Errorf("error reading data.dat: %v", err)
+		return fmt.Errorf("error reading data.dat: %v", err)
+	}
+	s.Data = data
+	return nil
+}
+
+// Store stores s.Data in the git repo.
+func (s *Storage) Store(message string) error {
+	// Clone the Git repository to a temporary directory
+	tempDir, err := os.MkdirTemp("", "repo")
+	if err != nil {
+		return fmt.Errorf("error creating temporary directory: %v", err)
+	}
+	defer os.RemoveAll(tempDir)
+
+	// Clone the repository
+	if err := cloneRepo(s.Cfg.GitRepoPath, tempDir); err != nil {
+		return err
 	}
 
-	// Create and return the Storage instance
-	return &Storage{
-		PrivKey: privKey,
-		PubKey:  pubKey,
-		Data:    data,
-		Cfg:     cfg,
-	}, nil
+	// Write the data.dat file
+	dataFilePath := filepath.Join(tempDir, "data.dat")
+	if err := os.WriteFile(dataFilePath, s.Data, fs.ModeType); err != nil {
+		return fmt.Errorf("error reading data.dat: %v", err)
+	}
+
+	return nil
 }
 
 // readKey reads a key from a file or downloads it if it's a URL
@@ -83,7 +112,7 @@ func downloadFile(url string) ([]byte, error) {
 		return nil, fmt.Errorf("failed to download file: status code %d", resp.StatusCode)
 	}
 
-	return os.ReadAll(resp.Body)
+	return io.ReadAll(resp.Body)
 }
 
 // cloneRepo clones the specified Git repository into the given directory
@@ -92,5 +121,24 @@ func cloneRepo(repoPath, destDir string) error {
 	if err := cmd.Run(); err != nil {
 		return fmt.Errorf("failed to clone repository: %v", err)
 	}
+	return nil
+}
+
+func commitRepo(repoPath, commitMsg string) error {
+	cmd := exec.Command("git", "-C", repoPath, "add", "data.dat")
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("failed to add changes to the repository: %v", err)
+	}
+
+	cmd = exec.Command("git", "-C", repoPath, "commit", "-m", commitMsg)
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("failed to commit changes to the repository: %v", err)
+	}
+
+	cmd = exec.Command("git", "-C", repoPath, "push")
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("failed to push changes to the repository: %v", err)
+	}
+
 	return nil
 }

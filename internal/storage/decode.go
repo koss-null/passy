@@ -1,19 +1,28 @@
 package storage
 
 import (
-	"errors"
+	"encoding/json"
 	"strings"
+
+	"github.com/pkg/errors"
 )
 
 type Folder struct {
 	Name      string
-	SubFolder *Folder
+	SubFolder []*Folder
 	Key2Pass  map[string]string
 }
 
 // returns map key-value
 func (s *Storage) Decrypt() (*Folder, error) {
-	return nil, nil
+	s.Update()
+	var head Folder
+	// TODO: decrypt data
+	decrypted := s.Data
+	if err := json.Unmarshal(decrypted, &head); err != nil {
+		return nil, errors.Wrap(err, "failed to unmarshal decoded pass list")
+	}
+	return &head, nil
 }
 
 func (f *Folder) String() string {
@@ -29,7 +38,9 @@ func (f *Folder) String() string {
 	}
 
 	if f.SubFolder != nil {
-		sb.WriteString(f.SubFolder.String())
+		for _, sf := range f.SubFolder {
+			sb.WriteString(sf.String())
+		}
 	}
 
 	return sb.String()
