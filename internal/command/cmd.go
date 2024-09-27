@@ -1,120 +1,141 @@
 package command
 
 import (
-	"flag"
 	"fmt"
-	"io/fs"
 	"os"
-	"strings"
 
 	"github.com/pkg/errors"
+	"github.com/spf13/cobra"
 
 	"github.com/koss-null/passy/internal/passgen"
 	"github.com/koss-null/passy/internal/storage"
 )
 
-type Command struct {
-	Do func() string
+func helpString() string {
+	return `Usage:
+  passy [flags]
+
+Flags:
+  -a, --add                add password by key (key separator is '>') (supports pass level key to generate the pass automatically)
+  --pass                   set password (use with -a)
+  -p, --get-pass           show pass by key
+  -k, --show-keys          show keys for all existing passwords
+  --show-all               show all existing keys and passwords (use with -k)
+  
+  -c, --compose            compose password (safe level by default)
+  --readable               compose password that is readable, easy to remember and pretty safe (use with -c or -a)
+  --safe                   compose password that is safe and have chances to be remembered (use with -c or -a)
+  --insane                 compose password that is insanly complex (use with -c or -a)
+
+  -i, --interactive        run Passy in interactive mode [not implemented yet]
+  --keygen                 generate the private encryption key on given path
+  -h, --help               print help page
+`
 }
 
-func Parse() Command {
-	help := flag.Bool("h", false, "print help page")
-	helpLong := flag.Bool("help", false, "print help page")
+func NewCommand() *cobra.Command {
+	var (
+		interactive       bool
+		showKeys          bool
+		showAll           bool
+		getPass           string
+		addPass           string
+		thePass           string
+		keyGen            string
+		composePass       bool
+		passLevelReadable bool
+		passLevelSafe     bool
+		passLevelInsane   bool
+	)
 
-	interactive := flag.Bool("i", false, "run Passy in interactive mode [not implemented yet]")
-
-	showKeys := flag.Bool("k", false, "show keys for all existing passwords")
-	showAll := flag.Bool("show-all", false, "[-k ] show all existing keys and passwords")
-	getPass := flag.String("p", "", "show pass by key")
-	addPass := flag.String("a", "", "add password by key, key separator is '>' (supports pass level key to generate the pass automatically)")
-	thePass := flag.String("pass", "", "[-a ] set password")
-	keyGen := flag.String("keygen", "", "generate the private encryption key on given path")
-
-	composePass := flag.Bool("c", false, "compose password (safe level by default)")
-	passLevelReadable := flag.Bool("readable", false, "[-c|-a ] compose password that is readable, easy to remember and pretty safe")
-	passLevelSafe := flag.Bool("safe", false, "[-c|-a ] compose password that is safe and have chances to be remembered")
-	passLevelInsane := flag.Bool("insane", false, "[-c|-a ] compose password that is insanly complex")
-
-	flag.Parse()
-
-	if (help != nil && *help) || (helpLong != nil && *helpLong) {
-		return Command{helpString}
+	cmd := &cobra.Command{
+		Use:   "passy",
+		Short: "A command-line password manager",
+		Long:  `Passy is a password manager that allows you to generate, store, and retrieve passwords securely from your git repo.`,
+		Run: func(cmd *cobra.Command, args []string) {
+			// Default action if no subcommand is specified
+			_ = cmd.Help()
+		},
 	}
 
-	if composePass != nil && *composePass {
-		switch {
-		case passLevelReadable != nil && *passLevelReadable:
-			return Command{passgen.GenReadablePass}
-		case passLevelSafe != nil && *passLevelSafe:
-			return Command{passgen.GenSafePass}
-		case passLevelInsane != nil && *passLevelInsane:
-			return Command{passgen.GenInsanePass}
-		default:
-			return Command{passgen.GenSafePass}
-		}
+	cmd.SetHelpTemplate(helpString())
+
+	cmd.Flags().BoolVarP(&interactive, "interactive", "i", false, "run Passy in interactive mode [not implemented yet]")
+	cmd.Flags().BoolVarP(&showKeys, "show-keys", "k", false, "show keys for all existing passwords")
+	cmd.Flags().BoolVar(&showAll, "show-all", false, "[-k] show all existing keys and passwords")
+	cmd.Flags().StringVarP(&getPass, "get-pass", "p", "", "show pass by key")
+	cmd.Flags().StringVarP(&addPass, "add", "a", "", "add password by key, key separator is '>' (supports pass level key to generate the pass automatically)")
+	cmd.Flags().StringVar(&thePass, "pass", "", "[-a] set password")
+	cmd.Flags().StringVar(&keyGen, "keygen", "", "generate the private encryption key on given path")
+	cmd.Flags().BoolVarP(&composePass, "compose", "c", false, "compose password (safe level by default)")
+	cmd.Flags().BoolVar(&passLevelReadable, "readable", false, "[-c|-a] compose password that is readable, easy to remember and pretty safe")
+	cmd.Flags().BoolVar(&passLevelSafe, "safe", false, "[-c|-a] compose password that is safe and have chances to be remembered")
+	cmd.Flags().BoolVar(&passLevelInsane, "insane", false, "[-c|-a] compose password that is insanly complex")
+
+	// Parse the command
+	cmd.RunE = func(cmd *cobra.Command, args []string) error {
+		return executeCommand(interactive, showKeys, showAll, getPass, addPass, thePass, keyGen, composePass, passLevelReadable, passLevelSafe, passLevelInsane)
 	}
 
-	if interactive != nil && *interactive {
-		return Command{func() string { return "not implemented" }}
+	return cmd
+}
+
+func executeCommand(interactive, showKeys, showAll bool, getPass, addPass, thePass, keyGen string, _, passLevelReadable, passLevelSafe, passLevelInsane bool) error {
+	if interactive {
+		return fmt.Errorf("interactive mode is not implemented")
 	}
 
-	if showKeys != nil && *showKeys {
+	if showKeys {
 		flds, err := folders()
 		if err != nil {
-			return Command{err.Error}
+			return err
 		}
-		if showAll != nil && *showAll {
-			return Command{flds.String("")}
+		if showAll {
+			fmt.Println(flds.String("")())
+		} else {
+			fmt.Println(flds.SecureString("")())
 		}
-		return Command{flds.SecureString("")}
+		return nil
 	}
 
-	if getPass != nil && *getPass != "" {
-		return Command{func() string { return "not implemented" }}
+	if getPass != "" {
+		return fmt.Errorf("not implemented")
 	}
 
-	if addPass != nil && *addPass != "" {
+	if addPass != "" {
 		var pass string
 		switch {
-		case passLevelReadable != nil && *passLevelReadable:
+		case passLevelReadable:
 			pass = passgen.GenReadablePass()
-		case passLevelSafe != nil && *passLevelSafe:
-			pass = passgen.GenReadablePass()
-		case passLevelInsane != nil && *passLevelInsane:
+		case passLevelSafe:
+			pass = passgen.GenSafePass()
+		case passLevelInsane:
 			pass = passgen.GenInsanePass()
 		default:
-			return Command{func() string { return "please set the password strength option or [--pass] flag" }}
+			return fmt.Errorf("please set the password strength option or [--pass] flag")
 		}
 
-		if thePass != nil && *thePass != "" {
-			pass = *thePass
+		if thePass != "" {
+			pass = thePass
 		}
-		return Command{savePass(*addPass, pass)}
+		return savePass(addPass, pass)
 	}
 
-	if keyGen != nil && *keyGen != "" {
+	if keyGen != "" {
 		key, err := passgen.GenerateAESKey(32)
 		if err != nil {
-			return Command{err.Error}
+			return err
 		}
 
-		err = os.WriteFile(*keyGen, key, fs.ModePerm)
+		err = os.WriteFile(keyGen, key, 0o644)
 		if err != nil {
-			return Command{err.Error}
+			return err
 		}
-		return Command{func() string { return "the file was successfully created: " + *keyGen }}
+		fmt.Printf("the file was successfully created: %s\n", keyGen)
+		return nil
 	}
 
-	return Command{helpString}
-}
-
-func helpString() string {
-	sb := strings.Builder{}
-	sb.WriteString("Usage:\n")
-	flag.VisitAll(func(f *flag.Flag) {
-		sb.WriteString(fmt.Sprintf("  -%s, --%s  %s\n", f.Name, f.Name, f.Usage))
-	})
-	return sb.String()
+	return fmt.Errorf("no valid command provided")
 }
 
 func folders() (*storage.Folder, error) {
@@ -135,20 +156,21 @@ func folders() (*storage.Folder, error) {
 	return folders, nil
 }
 
-func savePass(key, pass string) func() string {
+func savePass(key, pass string) error {
 	cfg, err := storage.ParseConfig()
 	if err != nil {
-		return errors.Wrap(err, "failed to parse config").Error
+		return errors.Wrap(err, "failed to parse config")
 	}
 
 	st, err := storage.New(cfg)
 	if err != nil {
-		return errors.Wrap(err, "failed to init storage").Error
+		return errors.Wrap(err, "failed to init storage")
 	}
 
 	if err := st.Encrypt(key, pass, "", nil); err != nil {
-		return errors.Wrap(err, "failed to encrypt").Error
+		return errors.Wrap(err, "failed to encrypt")
 	}
 
-	return func() string { return fmt.Sprintf("the password %q was added successfully", pass) }
+	fmt.Printf("the password %q was added successfully\n", pass)
+	return nil
 }
