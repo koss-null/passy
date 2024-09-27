@@ -13,28 +13,23 @@ type Command struct {
 }
 
 func Parse() Command {
-	help := flag.Bool("h", false, "prints help page")
-	helpLong := flag.Bool("help", false, "prints help page")
+	help := flag.Bool("h", false, "print help page")
+	helpLong := flag.Bool("help", false, "print help page")
 
-	interactive := flag.Bool("i", false, "runs Passy in interactive mode [not implemented yet]")
+	interactive := flag.Bool("i", false, "run Passy in interactive mode [not implemented yet]")
 
 	showKeys := flag.Bool("k", false, "show keys for all existing passwords")
 	getPass := flag.String("p", "", "show pass by key")
 
-	composePass := flag.Bool("c", false, "composes password")
-	passLevelReadable := flag.Bool("readable", false, "composes password that is readable, easy to remember and pretty safe")
-	passLevelSafe := flag.Bool("safe", false, "composes password that is safe and have chances to be remembered")
-	passLevelInsane := flag.Bool("insane", false, "composes password that is insanly complex")
+	composePass := flag.Bool("c", false, "compose password (safe level by default)")
+	passLevelReadable := flag.Bool("readable", false, "[-c ] compose password that is readable, easy to remember and pretty safe")
+	passLevelSafe := flag.Bool("safe", false, "compose password that is safe and have chances to be remembered")
+	passLevelInsane := flag.Bool("insane", false, "compose password that is insanly complex")
 
 	flag.Parse()
 
 	if (help != nil && *help) || (helpLong != nil && *helpLong) {
-		sb := strings.Builder{}
-		sb.WriteString("Usage:\n")
-		flag.VisitAll(func(f *flag.Flag) {
-			sb.WriteString(fmt.Sprintf("  -%s, --%s  %s\n", f.Name, f.Name, f.Usage))
-		})
-		return Command{sb.String}
+		return Command{helpString}
 	}
 
 	if composePass != nil && *composePass {
@@ -62,5 +57,14 @@ func Parse() Command {
 		return Command{func() string { return "not implemented" }}
 	}
 
-	return Command{func() string { return "no command" }}
+	return Command{helpString}
+}
+
+func helpString() string {
+	sb := strings.Builder{}
+	sb.WriteString("Usage:\n")
+	flag.VisitAll(func(f *flag.Flag) {
+		sb.WriteString(fmt.Sprintf("  -%s, --%s  %s\n", f.Name, f.Name, f.Usage))
+	})
+	return sb.String()
 }
