@@ -89,9 +89,23 @@ func NewCommand() *cobra.Command {
 	return cmd
 }
 
-func executeCommand(interactive, showKeys, showAll bool, getPass, addPass, thePass, keyGen string, _, passLevelReadable, passLevelSafe, passLevelInsane bool) error {
+func executeCommand(interactive, showKeys, showAll bool, getPass, addPass, thePass, keyGen string, composePath, passLevelReadable, passLevelSafe, passLevelInsane bool) error {
 	if interactive {
 		return fmt.Errorf("interactive mode is not implemented")
+	}
+
+	if composePath {
+		switch {
+		case passLevelReadable:
+			fmt.Println(passgen.GenReadablePass())
+		case passLevelSafe:
+			fmt.Println(passgen.GenSafePass())
+		case passLevelInsane:
+			fmt.Println(passgen.GenInsanePass())
+		default:
+			fmt.Println(passgen.GenSafePass())
+		}
+		return nil
 	}
 
 	if showKeys {
