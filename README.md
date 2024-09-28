@@ -103,9 +103,9 @@ Here are some common examples of how to use Passy with links to each command for
 4. **Generate a password**: 
    ```bash
    passy --compose # generates --safe password
-   passy --compose --readable # eg.: 
-   passy --compose --safe # eg.: 
-   passy --compose --insane # eg.: 
+   passy --compose --readable # eg.: dEFvOSY3M3dlLW9nalU=
+   passy --compose --safe # eg.: aWJlZTg1dkktRWt+ZXV6LU9Ob1VEd3U=
+   passy --compose --insane # eg.: ¢@E?P¥Æ+a.ÀleZ©º.7Ì0Â$+;Ö&XÎ?$¸±-
    ```
    [Details on Compose Command](#-c--compose)
 
