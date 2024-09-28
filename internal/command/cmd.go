@@ -95,30 +95,11 @@ func executeCommand(interactive, showKeys, showAll bool, getPass, addPass, thePa
 	}
 
 	if composePath {
-		switch {
-		case passLevelReadable:
-			fmt.Println(passgen.GenReadablePass())
-		case passLevelSafe:
-			fmt.Println(passgen.GenSafePass())
-		case passLevelInsane:
-			fmt.Println(passgen.GenInsanePass())
-		default:
-			fmt.Println(passgen.GenSafePass())
-		}
-		return nil
+		return handlePasswordComposition(passLevelReadable, passLevelSafe, passLevelInsane)
 	}
 
 	if showKeys {
-		flds, err := folders()
-		if err != nil {
-			return err
-		}
-		if showAll {
-			fmt.Println(flds.String("")())
-		} else {
-			fmt.Println(flds.SecureString("")())
-		}
-		return nil
+		return handleShowKeys(showAll)
 	}
 
 	if getPass != "" {
@@ -126,39 +107,74 @@ func executeCommand(interactive, showKeys, showAll bool, getPass, addPass, thePa
 	}
 
 	if addPass != "" {
-		var pass string
-		switch {
-		case passLevelReadable:
-			pass = passgen.GenReadablePass()
-		case passLevelSafe:
-			pass = passgen.GenSafePass()
-		case passLevelInsane:
-			pass = passgen.GenInsanePass()
-		default:
-			return fmt.Errorf("please set the password strength option or [--pass] flag")
-		}
-
-		if thePass != "" {
-			pass = thePass
-		}
-		return savePass(addPass, pass)
+		return handleAddPassword(addPass, thePass, passLevelReadable, passLevelSafe, passLevelInsane)
 	}
 
 	if keyGen != "" {
-		key, err := storage.GenerateAESKey(32)
-		if err != nil {
-			return err
-		}
-
-		err = os.WriteFile(keyGen, key, 0o644)
-		if err != nil {
-			return err
-		}
-		fmt.Printf("the file was successfully created: %s\n", keyGen)
-		return nil
+		return handleKeyGeneration(keyGen)
 	}
 
 	return fmt.Errorf("no valid command provided")
+}
+
+func handlePasswordComposition(passLevelReadable, passLevelSafe, passLevelInsane bool) error {
+	switch {
+	case passLevelReadable:
+		fmt.Println(passgen.GenReadablePass())
+	case passLevelSafe:
+		fmt.Println(passgen.GenSafePass())
+	case passLevelInsane:
+		fmt.Println(passgen.GenInsanePass())
+	default:
+		fmt.Println(passgen.GenSafePass())
+	}
+	return nil
+}
+
+func handleShowKeys(showAll bool) error {
+	flds, err := folders()
+	if err != nil {
+		return err
+	}
+	if showAll {
+		fmt.Println(flds.String("")())
+	} else {
+		fmt.Println(flds.SecureString("")())
+	}
+	return nil
+}
+
+func handleAddPassword(addPass, thePass string, passLevelReadable, passLevelSafe, passLevelInsane bool) error {
+	var pass string
+	switch {
+	case passLevelReadable:
+		pass = passgen.GenReadablePass()
+	case passLevelSafe:
+		pass = passgen.GenSafePass()
+	case passLevelInsane:
+		pass = passgen.GenInsanePass()
+	default:
+		return fmt.Errorf("please set the password strength option or [--pass] flag")
+	}
+
+	if thePass != "" {
+		pass = thePass
+	}
+	return savePass(addPass, pass)
+}
+
+func handleKeyGeneration(keyGen string) error {
+	key, err := storage.GenerateAESKey(32)
+	if err != nil {
+		return err
+	}
+
+	err = os.WriteFile(keyGen, key, 0o644)
+	if err != nil {
+		return err
+	}
+	fmt.Printf("the file was successfully created: %s\n", keyGen)
+	return nil
 }
 
 func folders() (*storage.Folder, error) {
