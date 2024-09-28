@@ -4,6 +4,7 @@ import (
 	"crypto/aes"
 	"crypto/cipher"
 	"crypto/rand"
+	"encoding/binary"
 	"encoding/json"
 	"io"
 	mrand "math/rand"
@@ -37,7 +38,8 @@ func (s *Storage) Encrypt(key, pass, encryptionPass string, commitMessage *strin
 		return errors.Wrap(err, "failed to marshal new password data")
 	}
 
-	randStartLen, randEndLen := mrand.Intn(127), mrand.Intn(127)
+	// each 4 bytes
+	randStartLen, randEndLen := mrand.Intn(262144), mrand.Intn(262144)
 	randomStartBytes, randomEndBytes := make([]byte, randStartLen), make([]byte, randEndLen)
 	if _, err := rand.Read(randomStartBytes); err != nil {
 		return errors.Wrap(err, "failed to read from random stream")
@@ -46,11 +48,14 @@ func (s *Storage) Encrypt(key, pass, encryptionPass string, commitMessage *strin
 		return errors.Wrap(err, "failed to read from random stream")
 	}
 
+	var startLenBytes, endLenBytes [4]byte
+	binary.BigEndian.PutUint32(startLenBytes[:], uint32(randStartLen))
+	binary.BigEndian.PutUint32(endLenBytes[:], uint32(randEndLen))
 	byteData = append(
-		make([]byte, 0, 2+randStartLen+len(byteData)+randEndLen),
+		make([]byte, 0, 8+randStartLen+len(byteData)+randEndLen),
 		append(
-			// first 2 bytes represent random data lengths
-			[]byte{byte(randStartLen), byte(randEndLen)},
+			// first 4 bytes represent random data lengths
+			append(startLenBytes[:], endLenBytes[:]...),
 			// adding random data
 			append(randomStartBytes, append(byteData, randomEndBytes...)...)...,
 		)...,

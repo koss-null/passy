@@ -4,6 +4,7 @@ import (
 	"crypto/aes"
 	"crypto/cipher"
 	"encoding/base64"
+	"encoding/binary"
 	"encoding/json"
 	"fmt"
 
@@ -25,12 +26,12 @@ func (s *Storage) Decrypt() (*Folder, error) {
 	if len(decrypted) < 2 {
 		return nil, errors.Wrap(err, "pass data file is too short")
 	}
-	startGarbageLen, endGarbageLen := decrypted[0], decrypted[1]
-	if len(decrypted) < int(startGarbageLen)+int(endGarbageLen)+2 {
+	startGarbageLen, endGarbageLen := binary.BigEndian.Uint32(decrypted[:4]), binary.BigEndian.Uint32(decrypted[4:8])
+	if len(decrypted) < int(startGarbageLen)+int(endGarbageLen)+8 {
 		return nil, errors.Wrap(err, "pass data file encoded incorrectly")
 	}
 
-	decrypted = decrypted[2+startGarbageLen : len(decrypted)-int(endGarbageLen)]
+	decrypted = decrypted[8+startGarbageLen : len(decrypted)-int(endGarbageLen)]
 
 	var head Folder
 	if err := json.Unmarshal(decrypted, &head); err != nil {
