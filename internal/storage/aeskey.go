@@ -1,4 +1,4 @@
-package passgen
+package storage
 
 import (
 	"crypto/rand"

@@ -13,10 +13,8 @@ import (
 
 const defaultConfigFile = "~/.config/passy/config.toml"
 
-const mockConfig = `
-PrivKeyPath = "/path/to/private/key.pem" # can be https link
-GitRepoPath = "https://github.com/user/repository.git"
-`
+const mockConfig = `PrivKeyPath = "/path/to/private/key.pem" # can be https link
+GitRepoPath = "https://github.com/user/repository.git"`
 
 type Config struct {
 	PrivKeyPath string

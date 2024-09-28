@@ -10,7 +10,7 @@ import (
 	"github.com/pkg/errors"
 )
 
-// returns map key-value
+// Decrypt get's data from the repository, decrypts in and unmarshal.
 func (s *Storage) Decrypt() (*Folder, error) {
 	err := s.Update()
 	if err != nil {

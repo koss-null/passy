@@ -145,7 +145,7 @@ func executeCommand(interactive, showKeys, showAll bool, getPass, addPass, thePa
 	}
 
 	if keyGen != "" {
-		key, err := passgen.GenerateAESKey(32)
+		key, err := storage.GenerateAESKey(32)
 		if err != nil {
 			return err
 		}
