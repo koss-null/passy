@@ -16,20 +16,29 @@ func helpString() string {
   passy [flags]
 
 Flags:
-  -a, --add                add password by key (key separator is '>') (supports pass level key to generate the pass automatically)
-  --pass                   set password (use with -a)
-  -p, --get-pass           show pass by key
-  -k, --show-keys          show keys for all existing passwords
-  --show-all               show all existing keys and passwords (use with -k)
+  -a, --add                Add a new password associated with a specified key. The key separator is '>', allowing for hierarchical key structures (supports pass level key to generate the password automatically).
   
-  -c, --compose            compose password (safe level by default)
-  --readable               compose password that is readable, easy to remember and pretty safe (use with -c or -a)
-  --safe                   compose password that is safe and have chances to be remembered (use with -c or -a)
-  --insane                 compose password that is insanly complex (use with -c or -a)
+  --pass                   Specify the password to be added (requires -a flag).
+  
+  -p, --get-pass           Retrieve and display the password associated with the specified key.
+  
+  -k, --show-keys          List all keys for existing passwords, allowing you to see available entries in the password manager.
+  
+  --show-all               Display all existing keys and their associated passwords (requires -k flag).
 
-  -i, --interactive        run Passy in interactive mode [not implemented yet]
-  --keygen                 generate the private encryption key on given path
-  -h, --help               print help page
+  -c, --compose            Generate a new password based on specified criteria, defaulting to a safe level of complexity.
+  
+  --readable               Create a password that is easy to read and remember, while still providing a moderate level of security (can be used with -c or -a for composition).
+  
+  --safe                   Generate a password that balances security and memorability, suitable for general use (can be used with -c or -a).
+  
+  --insane                 Compose a highly complex password that maximizes security but may be difficult to remember (can be used with -c or -a).
+
+  -i, --interactive        Launch the Passy application in interactive mode for a guided password management experience [not implemented yet].
+  
+  --keygen                 Generate a private encryption key and save it to the specified file path for secure password storage.
+  
+  -h, --help               Display this help message with available commands and their descriptions.
 `
 }
 
