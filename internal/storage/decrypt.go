@@ -22,6 +22,16 @@ func (s *Storage) Decrypt() (*Folder, error) {
 		return nil, errors.Wrap(err, "failed to decode pass data")
 	}
 
+	if len(decrypted) < 2 {
+		return nil, errors.Wrap(err, "pass data file is too short")
+	}
+	startGarbageLen, endGarbageLen := decrypted[0], decrypted[1]
+	if len(decrypted) < int(startGarbageLen)+int(endGarbageLen)+2 {
+		return nil, errors.Wrap(err, "pass data file encoded incorrectly")
+	}
+
+	decrypted = decrypted[2+startGarbageLen : len(decrypted)-int(endGarbageLen)]
+
 	var head Folder
 	if err := json.Unmarshal(decrypted, &head); err != nil {
 		return nil, errors.Wrap(err, "failed to unmarshal decoded pass list")
