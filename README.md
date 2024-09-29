@@ -29,6 +29,10 @@ passy -a google.com --pass ChangeMe123
 passy -a google.com --insane
 # for folders just use / separator
 passy -a "socials/facebook.com" --readable
+# get your pass
+passy -p "socials/facebook.com"
+# see all saved keys
+passy -k
 ```
 
 ## Flags

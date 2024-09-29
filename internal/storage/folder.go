@@ -15,15 +15,18 @@ func (f *Folder) String(prefix string) func() string {
 	const tab = "    "
 	const symbol = "└── "
 	const verticalLine = "│   "
+	const folderColor = "\033[1;34m"   // Blue color for folder names
+	const passwordColor = "\033[1;33m" // Yellow color for passwords
+	const resetColor = "\033[0m"       // Reset color
 
 	sb := &strings.Builder{}
 
 	if f.Name != "" {
-		sb.WriteString(prefix + symbol + f.Name + "\n")
+		sb.WriteString(prefix + symbol + folderColor + f.Name + resetColor + "\n")
 	}
 
 	if f.Pass != "" {
-		sb.WriteString(prefix + tab + "Password: " + f.Pass + "\n")
+		sb.WriteString(prefix + tab + passwordColor + "Password: " + resetColor + f.Pass + "\n")
 	}
 
 	if f.SubFolder != nil {
@@ -44,15 +47,18 @@ func (f *Folder) SecureString(prefix string) func() string {
 	const symbol = "└── "
 	const verticalLine = "│   "
 	const lockSymbol = "🔒"
+	const folderColor = "\033[1;34m"   // Blue color for folder names
+	const passwordColor = "\033[1;31m" // Red color for passwords
+	const resetColor = "\033[0m"       // Reset color
 
 	sb := &strings.Builder{}
 
 	if f.Name != "" {
-		sb.WriteString(prefix + symbol + f.Name + "\n")
+		sb.WriteString(prefix + symbol + folderColor + f.Name + resetColor + "\n")
 	}
 
 	if f.Pass != "" {
-		sb.WriteString(prefix + tab + "Password: " + lockSymbol + "\n")
+		sb.WriteString(prefix + tab + passwordColor + "Password: " + lockSymbol + resetColor + "\n")
 	}
 
 	if f.SubFolder != nil {
