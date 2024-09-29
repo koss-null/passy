@@ -27,8 +27,8 @@ Now you can try to store new password in your keystorage:
 passy -a google.com --pass ChangeMe123
 # also you may generate new password and save it in a single line
 passy -a google.com --insane
-# for folders just use > separator
-passy -a "socials>facebook.com" --readable
+# for folders just use / separator
+passy -a "socials/facebook.com" --readable
 ```
 
 ## Flags
@@ -36,7 +36,7 @@ passy -a "socials>facebook.com" --readable
 Passy allows you to manage your passwords through various commands. Below are the flags you can use along with additional links for further details.
 
 ### -a, --add
-Add a new password associated with a specified key. The key separator is '>', allowing for hierarchical key structures (supports pass level key to generate the password automatically).
+Add a new password associated with a specified key. The key separator is '/', allowing for hierarchical key structures (supports pass level key to generate the password automatically).
 
 ### --pass
 Specify the password to be added (requires the `-a` flag).

@@ -16,7 +16,7 @@ func helpString() string {
   passy [flags]
 
 Flags:
-  -a, --add                Add a new password associated with a specified key. The key separator is '>', allowing for hierarchical key structures (supports pass level key to generate the password automatically).
+  -a, --add                Add a new password associated with a specified key. The key separator is '/', allowing for hierarchical key structures (supports pass level key to generate the password automatically).
   
   --pass                   Specify the password to be added (requires -a flag).
   
@@ -73,7 +73,7 @@ func NewCommand() *cobra.Command {
 	cmd.Flags().BoolVarP(&showKeys, "show-keys", "k", false, "show keys for all existing passwords")
 	cmd.Flags().BoolVar(&showAll, "show-all", false, "[-k] show all existing keys and passwords")
 	cmd.Flags().StringVarP(&getPass, "get-pass", "p", "", "show pass by key")
-	cmd.Flags().StringVarP(&addPass, "add", "a", "", "add password by key, key separator is '>' (supports pass level key to generate the pass automatically)")
+	cmd.Flags().StringVarP(&addPass, "add", "a", "", "add password by key, key separator is '/' (supports pass level key to generate the pass automatically)")
 	cmd.Flags().StringVar(&thePass, "pass", "", "[-a] set password")
 	cmd.Flags().StringVar(&keyGen, "keygen", "", "generate the private encryption key on given path")
 	cmd.Flags().BoolVarP(&composePass, "compose", "c", false, "compose password (safe level by default)")
@@ -103,7 +103,7 @@ func executeCommand(interactive, showKeys, showAll bool, getPass, addPass, thePa
 	}
 
 	if getPass != "" {
-		return fmt.Errorf("not implemented")
+		return handleGetPass(getPass)
 	}
 
 	if addPass != "" {
@@ -141,6 +141,20 @@ func handleShowKeys(showAll bool) error {
 	} else {
 		fmt.Println(flds.SecureString("")())
 	}
+	return nil
+}
+
+func handleGetPass(key string) error {
+	flds, err := folders()
+	if err != nil {
+		return err
+	}
+
+	sf, found := flds.GetSubFolder(key)
+	if !found {
+		fmt.Println("no such key")
+	}
+	fmt.Println(sf.String("")())
 	return nil
 }
 

@@ -68,12 +68,14 @@ func (f *Folder) SecureString(prefix string) func() string {
 	return sb.String
 }
 
+const folderSeparator = "/"
+
 func (f *Folder) Add(folderPath, pass string) error {
 	if f.Name != "" {
 		return errors.New("should add to the head only")
 	}
 
-	path := strings.Split(folderPath, ">")
+	path := strings.Split(folderPath, folderSeparator)
 	cf := f
 
 	for j, folderName := range path {
@@ -103,4 +105,25 @@ func (f *Folder) Add(folderPath, pass string) error {
 
 	cf.Pass = pass
 	return nil
+}
+
+func (f *Folder) GetSubFolder(key string) (*Folder, bool) {
+	path := strings.Split(key, folderSeparator)
+	cf := f
+
+	for _, folderName := range path {
+		found := false
+		for i := range cf.SubFolder {
+			if cf.SubFolder[i].Name == folderName {
+				cf = cf.SubFolder[i]
+				found = true
+				break
+			}
+		}
+		if !found {
+			return nil, false
+		}
+	}
+
+	return cf, true
 }
