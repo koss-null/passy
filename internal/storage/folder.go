@@ -71,6 +71,7 @@ func (f *Folder) Add(folderPath, pass string) error {
 			}
 		}
 		if !found {
+			// Create new folders for the remaining path
 			for _, newFolderName := range path[j:] {
 				newFolder := &Folder{
 					Name:      newFolderName,
@@ -80,6 +81,8 @@ func (f *Folder) Add(folderPath, pass string) error {
 				cf.SubFolder = append(cf.SubFolder, newFolder)
 				cf = newFolder
 			}
+			// Exit the loop after adding new folders
+			break
 		}
 	}
 
