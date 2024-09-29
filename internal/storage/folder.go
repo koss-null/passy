@@ -12,20 +12,27 @@ type Folder struct {
 }
 
 func (f *Folder) String(prefix string) func() string {
-	const line = "-------------------------------\n"
+	const tab = "    "
+	const symbol = "└── "
+	const verticalLine = "│   "
 
-	sb := strings.Builder{}
+	sb := &strings.Builder{}
+
+	if f.Name != "" {
+		sb.WriteString(prefix + symbol + f.Name + "\n")
+	}
 
 	if f.Pass != "" {
-		sb.WriteString(line)
-		sb.WriteString(prefix + " " + f.Name + "\n")
-		sb.WriteString(line)
-		sb.WriteString(f.Pass + "\n")
+		sb.WriteString(prefix + tab + "Password: " + f.Pass + "\n")
 	}
 
 	if f.SubFolder != nil {
 		for _, sf := range f.SubFolder {
-			sb.WriteString(sf.String(prefix + ">" + f.Name)())
+			newPrefix := prefix
+			if f.Name != "" {
+				newPrefix += verticalLine
+			}
+			sb.WriteString(sf.String(newPrefix)())
 		}
 	}
 
@@ -33,20 +40,28 @@ func (f *Folder) String(prefix string) func() string {
 }
 
 func (f *Folder) SecureString(prefix string) func() string {
-	const line = "-------------------------------\n"
+	const tab = "    "
+	const symbol = "└── "
+	const verticalLine = "│   "
+	const lockSymbol = "🔒"
 
-	sb := strings.Builder{}
+	sb := &strings.Builder{}
+
+	if f.Name != "" {
+		sb.WriteString(prefix + symbol + f.Name + "\n")
+	}
 
 	if f.Pass != "" {
-		sb.WriteString(line)
-		sb.WriteString(prefix + " " + f.Name + "\n")
-		sb.WriteString(line)
-		sb.WriteString("●●●●●●●●●" + "\n")
+		sb.WriteString(prefix + tab + "Password: " + lockSymbol + "\n")
 	}
 
 	if f.SubFolder != nil {
 		for _, sf := range f.SubFolder {
-			sb.WriteString(sf.SecureString(prefix + ">" + f.Name)())
+			newPrefix := prefix
+			if f.Name != "" {
+				newPrefix += verticalLine
+			}
+			sb.WriteString(sf.SecureString(newPrefix)())
 		}
 	}
 
