@@ -2,7 +2,6 @@ package passgen
 
 import (
 	"crypto/rand"
-	"encoding/base64"
 	"encoding/binary"
 
 	"github.com/pkg/errors"
@@ -88,7 +87,7 @@ func (g *Generator) GenReadablePass() string {
 		word = append(word[:randomPlace], append([]rune{g.randomSpecialSymbol()}, word[randomPlace:]...)...)
 	}
 
-	return base64.StdEncoding.EncodeToString([]byte(string(word)))
+	return string(word)
 }
 
 func (g *Generator) GenSafePass() string {
@@ -129,7 +128,7 @@ func (g *Generator) GenSafePass() string {
 		randomPlace = g.RandIntn(len(word))
 		word = append(word[:randomPlace], append([]rune{g.randomSafeLetter()}, word[randomPlace:]...)...)
 	}
-	return base64.StdEncoding.EncodeToString([]byte(string(word)))
+	return string(word)
 }
 
 func (g *Generator) GenInsanePass() string {
