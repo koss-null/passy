@@ -14,26 +14,9 @@ import (
 
 const defaultCommitMessage = "nothing important"
 
-// Encrypt encodes the folder paths and stores the data in a repository
-func (s *Storage) Encrypt(key, pass, encryptionPass string, commitMessage *string) error {
-	err := s.Update()
-	if err != nil {
-		return errors.Wrap(err, "failed to update data from the repo during encryption")
-	}
-
-	data := &Folder{Name: "", SubFolder: []*Folder{}}
-	if s.Data != "" {
-		var err error
-		data, err = s.Decrypt()
-		if err != nil {
-			return errors.Wrap(err, "failed to get current passwords")
-		}
-	}
-
-	if err := data.Add(key, pass); err != nil {
-		return errors.Wrap(err, "failed to add key and pass to the data map")
-	}
-	byteData, err := json.Marshal(data)
+// Encrypt encrypts data inside of a Storage.
+func (s *Storage) Encrypt(topFolder *Folder) error {
+	byteData, err := json.Marshal(topFolder)
 	if err != nil {
 		return errors.Wrap(err, "failed to marshal new password data")
 	}
@@ -65,13 +48,9 @@ func (s *Storage) Encrypt(key, pass, encryptionPass string, commitMessage *strin
 	if err != nil {
 		return errors.Wrap(err, "failed to encrypt new password data")
 	}
-	s.Data = string(encryptedData)
 
-	message := defaultCommitMessage
-	if commitMessage != nil {
-		message = *commitMessage
-	}
-	return s.Store(message)
+	s.Data = string(encryptedData)
+	return nil
 }
 
 func (s *Storage) encrypt(data []byte) ([]byte, error) {

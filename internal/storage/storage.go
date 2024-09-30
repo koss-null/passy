@@ -38,7 +38,7 @@ func New(cfg *Config) (*Storage, error) {
 
 // Update updates data inside of a storage from the git repo.
 func (s *Storage) Update() error {
-	const repoUpdateInterval = time.Second * 5
+	const repoUpdateInterval = time.Second * 10
 
 	if time.Since(s.updated) < repoUpdateInterval {
 		return nil
@@ -72,7 +72,7 @@ func (s *Storage) Update() error {
 }
 
 // Store stores s.Data in the git repo.
-func (s *Storage) Store(message string) error {
+func (s *Storage) Store(message *string) error {
 	// Clone the Git repository to a temporary directory
 	tempDir, err := os.MkdirTemp("", "repo")
 	if err != nil {
@@ -91,7 +91,11 @@ func (s *Storage) Store(message string) error {
 		return fmt.Errorf("error reading data.dat: %v", err)
 	}
 
-	return commitRepo(tempDir, message)
+	msg := defaultCommitMessage
+	if message != nil {
+		msg = *message
+	}
+	return commitRepo(tempDir, msg)
 }
 
 // readKey reads a key from a file or downloads it if it's a URL

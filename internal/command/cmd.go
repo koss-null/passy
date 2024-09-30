@@ -21,6 +21,8 @@ Flags:
   --pass                   Specify the password to be added (requires -a flag).
   
   -p, --get-pass           Retrieve and display the password associated with the specified key.
+
+  -d, --delete             Remove key or folder.
   
   -k, --show-keys          List all keys for existing passwords, allowing you to see available entries in the password manager.
   
@@ -49,6 +51,7 @@ func NewCommand() *cobra.Command {
 		showAll           bool
 		getPass           string
 		addPass           string
+		deletePass        string
 		thePass           string
 		keyGen            string
 		composePass       bool
@@ -74,6 +77,7 @@ func NewCommand() *cobra.Command {
 	cmd.Flags().BoolVar(&showAll, "show-all", false, "[-k] show all existing keys and passwords")
 	cmd.Flags().StringVarP(&getPass, "get-pass", "p", "", "show pass by key")
 	cmd.Flags().StringVarP(&addPass, "add", "a", "", "add password by key, key separator is '/' (supports pass level key to generate the pass automatically)")
+	cmd.Flags().StringVarP(&deletePass, "delete", "d", "", "delete key or key folder, key separator is '/'")
 	cmd.Flags().StringVar(&thePass, "pass", "", "[-a] set password")
 	cmd.Flags().StringVar(&keyGen, "keygen", "", "generate the private encryption key on given path")
 	cmd.Flags().BoolVarP(&composePass, "compose", "c", false, "compose password (safe level by default)")
@@ -83,13 +87,13 @@ func NewCommand() *cobra.Command {
 
 	// Parse the command
 	cmd.RunE = func(cmd *cobra.Command, args []string) error {
-		return executeCommand(interactive, showKeys, showAll, getPass, addPass, thePass, keyGen, composePass, passLevelReadable, passLevelSafe, passLevelInsane)
+		return executeCommand(interactive, showKeys, showAll, getPass, addPass, deletePass, thePass, keyGen, composePass, passLevelReadable, passLevelSafe, passLevelInsane)
 	}
 
 	return cmd
 }
 
-func executeCommand(interactive, showKeys, showAll bool, getPass, addPass, thePass, keyGen string, composePass, passLevelReadable, passLevelSafe, passLevelInsane bool) error {
+func executeCommand(interactive, showKeys, showAll bool, getPass, addPass, deletePass, thePass, keyGen string, composePass, passLevelReadable, passLevelSafe, passLevelInsane bool) error {
 	if interactive {
 		return fmt.Errorf("interactive mode is not implemented")
 	}
@@ -108,6 +112,10 @@ func executeCommand(interactive, showKeys, showAll bool, getPass, addPass, thePa
 
 	if addPass != "" {
 		return handleAddPassword(addPass, thePass, passLevelReadable, passLevelSafe, passLevelInsane)
+	}
+
+	if deletePass != "" {
+		return handleDeletePassword(deletePass)
 	}
 
 	if keyGen != "" {
@@ -187,6 +195,43 @@ func handleAddPassword(addPass, thePass string, passLevelReadable, passLevelSafe
 	return savePass(addPass, pass)
 }
 
+func handleDeletePassword(key string) error {
+	fmt.Printf("do you really want to delete %q [y/N]\n", key)
+	var ans string
+	fmt.Scanln(&ans)
+
+	if ans == "y" || ans == "Y" || ans == "yes" {
+		cfg, err := storage.ParseConfig()
+		if err != nil {
+			return errors.Wrap(err, "failed to parse config")
+		}
+
+		st, err := storage.New(cfg)
+		if err != nil {
+			return errors.Wrap(err, "failed to init storage")
+		}
+
+		flds, err := st.Decrypt()
+		if err != nil {
+			return err
+		}
+		if err := flds.Delete(key); err != nil {
+			return err
+		}
+
+		if err := st.Encrypt(flds); err != nil {
+			return errors.Wrap(err, "failed to encrypt new password")
+		}
+
+		if err = st.Store(nil); err != nil {
+			return errors.Wrap(err, "failed to store new password")
+		}
+	}
+
+	fmt.Println("ok, leave everything as is")
+	return nil
+}
+
 func handleKeyGeneration(keyGen string) error {
 	key, err := storage.GenerateAESKey(32)
 	if err != nil {
@@ -230,8 +275,21 @@ func savePass(key, pass string) error {
 		return errors.Wrap(err, "failed to init storage")
 	}
 
-	if err := st.Encrypt(key, pass, "", nil); err != nil {
+	flds, err := st.Decrypt()
+	if err != nil {
+		return errors.Wrap(err, "failed to decrypt")
+	}
+
+	if err = flds.Add(key, pass); err != nil {
+		return errors.Wrap(err, "failed to add a new key")
+	}
+
+	if err = st.Encrypt(flds); err != nil {
 		return errors.Wrap(err, "failed to encrypt")
+	}
+
+	if err = st.Store(nil); err != nil {
+		return errors.Wrap(err, "failed to store new password")
 	}
 
 	fmt.Printf("the password %q was added successfully\n", pass)

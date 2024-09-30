@@ -113,6 +113,45 @@ func (f *Folder) Add(folderPath, pass string) error {
 	return nil
 }
 
+func (f *Folder) Delete(folderPath string) error {
+	if f.Name == "" {
+		return errors.New("cannot delete from an empty folder")
+	}
+
+	path := strings.Split(folderPath, folderSeparator)
+	cf := f
+	var parent *Folder
+	var folderToDelete *Folder
+
+	for _, folderName := range path {
+		found := false
+		for i := range cf.SubFolder {
+			if cf.SubFolder[i].Name == folderName {
+				parent = cf
+				cf = cf.SubFolder[i]
+				found = true
+				break
+			}
+		}
+		if !found {
+			return errors.New("folder not found")
+		}
+	}
+
+	// Now cf is the folder to delete
+	folderToDelete = cf
+
+	// Remove folderToDelete from parent's SubFolder
+	for i, subFolder := range parent.SubFolder {
+		if subFolder == folderToDelete {
+			parent.SubFolder = append(parent.SubFolder[:i], parent.SubFolder[i+1:]...)
+			return nil
+		}
+	}
+
+	return errors.New("folder not found in parent's subfolders")
+}
+
 func (f *Folder) GetSubFolder(key string) (*Folder, bool) {
 	path := strings.Split(key, folderSeparator)
 	cf := f
