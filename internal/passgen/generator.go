@@ -1,10 +1,11 @@
 package passgen
 
 import (
+	"crypto/rand"
 	"encoding/base64"
-	"time"
+	"encoding/binary"
 
-	"golang.org/x/exp/rand"
+	"github.com/pkg/errors"
 )
 
 var (
@@ -19,194 +20,226 @@ var (
 	wierdSignsPack3    = []rune("²³¹ºª¼½¾×±")
 )
 
-// GenReadablePass looks like *word**number**separator**word**number**separator**specialSymbol*
-func GenReadablePass() string {
-	const minWordLen = 12
-	rand.Seed(uint64(time.Now().UnixNano()) + 44739242)
+type Generator struct {
+	randomInts []int
+}
 
+// New returns Generator with 128 random generated values.
+func New() (*Generator, error) {
+	const randomBatchLen = 128
+
+	rnd := make([]byte, randomBatchLen*8) // 8 byte for 1 int64
+	_, err := rand.Read(rnd)
+	if err != nil {
+		return nil, errors.Wrap(err, "unable to read random sequence")
+	}
+
+	g := Generator{randomInts: make([]int, randomBatchLen)}
+	for i := 0; i < len(rnd); i += 8 {
+		var num int64
+		// Read 8 bytes into num
+		binary.BigEndian.PutUint64(rnd[i:i+8], uint64(num))
+		g.randomInts[i/8] = int(num)
+	}
+	return &g, nil
+}
+
+func (g *Generator) RandIntn(n int) int {
+	r := g.randomInts[0]
+	if len(g.randomInts) == 1 {
+		// skipping error as this case is working only when we trying to get
+		// >64 random values from the Generator, which is should not ever happen.
+		newGen, _ := New()
+		g.randomInts = newGen.randomInts
+	}
+	g.randomInts = g.randomInts[1:]
+	return r % n
+}
+
+// GenReadablePass looks like *word**number**separator**word**number**separator**specialSymbol*
+func (g *Generator) GenReadablePass() string {
+	const minWordLen = 12
 	word := make([]rune, 0)
 
 	// word
-	word = append(word, generatePronounceableWord()...)
+	word = append(word, g.generatePronounceableWord()...)
 	// separator
-	word = append(word, randomSeparator())
+	word = append(word, g.randomSeparator())
 	// word
-	word = append(word, generatePronounceableWord()...)
+	word = append(word, g.generatePronounceableWord()...)
 
 	num := func() []rune {
-		num := []rune{randomNumber()}
-		if rand.Intn(2) == 1 { // 50%
-			num = append(num, randomNumber())
-			if rand.Intn(2) == 1 { // 25%
-				num = append(num, randomNumber())
+		num := []rune{g.randomNumber()}
+		if g.RandIntn(2) == 1 { // 50%
+			num = append(num, g.randomNumber())
+			if g.RandIntn(2) == 1 { // 25%
+				num = append(num, g.randomNumber())
 			}
 		}
 		return num
 	}()
-	randomPlace := rand.Intn(len(word))
+	randomPlace := g.RandIntn(len(word))
 	word = append(word[:randomPlace], append(num, word[randomPlace:]...)...)
 
-	randomPlace = rand.Intn(len(word))
-	word = append(word[:randomPlace], append([]rune{randomSpecialSymbol()}, word[randomPlace:]...)...)
+	randomPlace = g.RandIntn(len(word))
+	word = append(word[:randomPlace], append([]rune{g.randomSpecialSymbol()}, word[randomPlace:]...)...)
 	for len(word) < minWordLen {
-		randomPlace = rand.Intn(len(word))
-		word = append(word[:randomPlace], append([]rune{randomSpecialSymbol()}, word[randomPlace:]...)...)
+		randomPlace = g.RandIntn(len(word))
+		word = append(word[:randomPlace], append([]rune{g.randomSpecialSymbol()}, word[randomPlace:]...)...)
 	}
 
 	return base64.StdEncoding.EncodeToString([]byte(string(word)))
 }
 
-func GenSafePass() string {
+func (g *Generator) GenSafePass() string {
 	const (
 		minLength = 18
 		maxLength = 25
 	)
-	rand.Seed(uint64(time.Now().UnixNano() + 699050))
 
 	word := make([]rune, 0)
 	// word
-	word = append(word, generatePronounceableWord()...)
+	word = append(word, g.generatePronounceableWord()...)
 	// separator
-	word = append(word, randomSeparator())
+	word = append(word, g.randomSeparator())
 	// word
-	word = append(word, generatePronounceableWord()...)
+	word = append(word, g.generatePronounceableWord()...)
 	// separator
-	word = append(word, randomSeparator())
+	word = append(word, g.randomSeparator())
 	// word
-	word = append(word, generatePronounceableWord()...)
+	word = append(word, g.generatePronounceableWord()...)
 
 	num := func() []rune {
-		num := []rune{randomNumber()}
-		if rand.Intn(2) == 1 { // 50%
-			num = append(num, randomNumber())
-			if rand.Intn(2) == 1 { // 25%
-				num = append(num, randomNumber())
+		num := []rune{g.randomNumber()}
+		if g.RandIntn(2) == 1 { // 50%
+			num = append(num, g.randomNumber())
+			if g.RandIntn(2) == 1 { // 25%
+				num = append(num, g.randomNumber())
 			}
 		}
 		return num
 	}()
-	randomPlace := rand.Intn(len(word))
+	randomPlace := g.RandIntn(len(word))
 	word = append(word[:randomPlace], append(num, word[randomPlace:]...)...)
-	randomPlace = rand.Intn(len(word))
-	word = append(word[:randomPlace], append([]rune{randomVerySpecialSymbol()}, word[randomPlace:]...)...)
+	randomPlace = g.RandIntn(len(word))
+	word = append(word[:randomPlace], append([]rune{g.randomVerySpecialSymbol()}, word[randomPlace:]...)...)
 
-	length := rand.Intn(maxLength-minLength) + minLength
+	length := g.RandIntn(maxLength-minLength) + minLength
 	for i := len(word); i < length; i++ {
-		randomPlace = rand.Intn(len(word))
-		word = append(word[:randomPlace], append([]rune{randomSafeLetter()}, word[randomPlace:]...)...)
+		randomPlace = g.RandIntn(len(word))
+		word = append(word[:randomPlace], append([]rune{g.randomSafeLetter()}, word[randomPlace:]...)...)
 	}
 	return base64.StdEncoding.EncodeToString([]byte(string(word)))
 }
 
-func GenInsanePass() string {
+func (g *Generator) GenInsanePass() string {
 	const (
 		minLength = 27
 		maxLength = 40
 	)
-	rand.Seed(uint64(time.Now().UnixNano()) + 44738242)
 
-	length := rand.Intn(maxLength-minLength) + minLength
+	length := g.RandIntn(maxLength-minLength) + minLength
 	word := make([]rune, length)
 	for i := range word {
-		word[i] = randomInsaneLetter()
+		word[i] = g.randomInsaneLetter()
 	}
 	return string(word)
 }
 
-func randomSafeLetter() rune {
-	letterType := rand.Intn(100)
+func (g *Generator) randomSafeLetter() rune {
+	letterType := g.RandIntn(100)
 	switch {
 	case letterType < 50:
-		return randomSpecialSymbol()
+		return g.randomSpecialSymbol()
 	case letterType < 66:
-		return randomVerySpecialSymbol()
+		return g.randomVerySpecialSymbol()
 	case letterType < 88:
-		return randomNumber()
+		return g.randomNumber()
 	default:
-		return randomSeparator()
+		return g.randomSeparator()
 	}
 }
 
-func randomInsaneLetter() rune {
-	letterType := rand.Intn(100)
+func (g *Generator) randomInsaneLetter() rune {
+	letterType := g.RandIntn(100)
 	switch {
 	case letterType < 11:
-		return randomVowel()
+		return g.randomVowel()
 	case letterType < 22:
-		return randomConsonant()
+		return g.randomConsonant()
 	case letterType < 33:
-		return randomSeparator()
+		return g.randomSeparator()
 	case letterType < 44:
-		return randomNumber()
+		return g.randomNumber()
 	case letterType < 55:
-		return randomSpecialSymbol()
+		return g.randomSpecialSymbol()
 	case letterType < 66:
-		return randomVerySpecialSymbol()
+		return g.randomVerySpecialSymbol()
 	case letterType < 77:
-		return randomWierdPack1()
+		return g.randomWierdPack1()
 	case letterType < 88:
-		return randomWierdPack2()
+		return g.randomWierdPack2()
 	default:
-		return randomWierdPack3()
+		return g.randomWierdPack3()
 	}
 }
 
-func randomSyllable() []rune {
+func (g *Generator) randomSyllable() []rune {
 	syllables := [][]rune{
-		{randomConsonant(), randomVowel()},
-		{randomVowel(), randomConsonant()},
-		{randomVowel(), randomConsonant(), randomVowel()},
-		{randomConsonant(), randomVowel(), randomConsonant()},
+		{g.randomConsonant(), g.randomVowel()},
+		{g.randomVowel(), g.randomConsonant()},
+		{g.randomVowel(), g.randomConsonant(), g.randomVowel()},
+		{g.randomConsonant(), g.randomVowel(), g.randomConsonant()},
 	}
-	return syllables[rand.Intn(len(syllables))]
+	return syllables[g.RandIntn(len(syllables))]
 }
 
-func generatePronounceableWord() []rune {
+func (g *Generator) generatePronounceableWord() []rune {
 	const (
 		minWordLen = 4
 		maxWordLen = 8
 	)
 
 	word := make([]rune, 0, 20)
-	length := rand.Intn(maxWordLen-minWordLen) + minWordLen
+	length := g.RandIntn(maxWordLen-minWordLen) + minWordLen
 	for len(word) < length {
-		word = append(word, randomSyllable()...)
+		word = append(word, g.randomSyllable()...)
 	}
 	return word[:length]
 }
 
-func randomVowel() rune {
-	return rune(vowels[rand.Intn(len(vowels))])
+func (g *Generator) randomVowel() rune {
+	return rune(vowels[g.RandIntn(len(vowels))])
 }
 
-func randomConsonant() rune {
-	return rune(consonants[rand.Intn(len(consonants))])
+func (g *Generator) randomConsonant() rune {
+	return rune(consonants[g.RandIntn(len(consonants))])
 }
 
-func randomSeparator() rune {
-	return rune(separators[rand.Intn(len(separators))])
+func (g *Generator) randomSeparator() rune {
+	return rune(separators[g.RandIntn(len(separators))])
 }
 
-func randomNumber() rune {
-	return rune(numbers[rand.Intn(len(numbers))])
+func (g *Generator) randomNumber() rune {
+	return rune(numbers[g.RandIntn(len(numbers))])
 }
 
-func randomSpecialSymbol() rune {
-	return rune(specialSymbols[rand.Intn(len(specialSymbols))])
+func (g *Generator) randomSpecialSymbol() rune {
+	return rune(specialSymbols[g.RandIntn(len(specialSymbols))])
 }
 
-func randomVerySpecialSymbol() rune {
-	return rune(verySpecialSymbols[rand.Intn(len(verySpecialSymbols))])
+func (g *Generator) randomVerySpecialSymbol() rune {
+	return rune(verySpecialSymbols[g.RandIntn(len(verySpecialSymbols))])
 }
 
-func randomWierdPack1() rune {
-	return wierdSignsPack1[rand.Intn(len(wierdSignsPack1))]
+func (g *Generator) randomWierdPack1() rune {
+	return wierdSignsPack1[g.RandIntn(len(wierdSignsPack1))]
 }
 
-func randomWierdPack2() rune {
-	return wierdSignsPart2[rand.Intn(len(wierdSignsPart2))]
+func (g *Generator) randomWierdPack2() rune {
+	return wierdSignsPart2[g.RandIntn(len(wierdSignsPart2))]
 }
 
-func randomWierdPack3() rune {
-	return wierdSignsPack3[rand.Intn(len(wierdSignsPack3))]
+func (g *Generator) randomWierdPack3() rune {
+	return wierdSignsPack3[g.RandIntn(len(wierdSignsPack3))]
 }

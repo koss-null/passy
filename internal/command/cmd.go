@@ -118,15 +118,20 @@ func executeCommand(interactive, showKeys, showAll bool, getPass, addPass, thePa
 }
 
 func handlePasswordComposition(passLevelReadable, passLevelSafe, passLevelInsane bool) error {
+	gen, err := passgen.New()
+	if err != nil {
+		return fmt.Errorf("unable to create generator: %v", err)
+	}
+
 	switch {
 	case passLevelReadable:
-		fmt.Println(passgen.GenReadablePass())
+		fmt.Println(gen.GenReadablePass())
 	case passLevelSafe:
-		fmt.Println(passgen.GenSafePass())
+		fmt.Println(gen.GenSafePass())
 	case passLevelInsane:
-		fmt.Println(passgen.GenInsanePass())
+		fmt.Println(gen.GenInsanePass())
 	default:
-		fmt.Println(passgen.GenSafePass())
+		fmt.Println(gen.GenSafePass())
 	}
 	return nil
 }
@@ -159,14 +164,19 @@ func handleGetPass(key string) error {
 }
 
 func handleAddPassword(addPass, thePass string, passLevelReadable, passLevelSafe, passLevelInsane bool) error {
+	gen, err := passgen.New()
+	if err != nil {
+		return fmt.Errorf("unable to create generator: %v", err)
+	}
+
 	var pass string
 	switch {
 	case passLevelReadable:
-		pass = passgen.GenReadablePass()
+		pass = gen.GenReadablePass()
 	case passLevelSafe:
-		pass = passgen.GenSafePass()
+		pass = gen.GenSafePass()
 	case passLevelInsane:
-		pass = passgen.GenInsanePass()
+		pass = gen.GenInsanePass()
 	default:
 		return fmt.Errorf("please set the password strength option or [--pass] flag")
 	}
