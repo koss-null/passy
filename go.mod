@@ -7,7 +7,6 @@ require (
 	github.com/go-git/go-git/v5 v5.12.0
 	github.com/pkg/errors v0.9.1
 	github.com/spf13/cobra v1.8.1
-	golang.org/x/exp v0.0.0-20240909161429-701f63a606c0
 )
 
 require (
