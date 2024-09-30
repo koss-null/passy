@@ -8,7 +8,6 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
-	"time"
 
 	git "github.com/go-git/go-git/v5"
 )
@@ -18,7 +17,7 @@ type Storage struct {
 	PrivKey []byte
 	Data    string
 	Cfg     *Config
-	updated time.Time
+	updated bool
 }
 
 // New initializes a new Storage instance
@@ -38,11 +37,10 @@ func New(cfg *Config) (*Storage, error) {
 
 // Update updates data inside of a storage from the git repo.
 func (s *Storage) Update() error {
-	const repoUpdateInterval = time.Second * 10
-
-	if time.Since(s.updated) < repoUpdateInterval {
+	if s.updated {
 		return nil
 	}
+	s.updated = true
 
 	// Clone the Git repository to a temporary directory
 	tempDir, err := os.MkdirTemp("", "repo")
@@ -61,13 +59,11 @@ func (s *Storage) Update() error {
 	if err != nil {
 		if _, ok := err.(*os.PathError); ok {
 			s.Data = ""
-			s.updated = time.Now()
 			return nil
 		}
 		return fmt.Errorf("error reading data.dat: %v", err)
 	}
 	s.Data = base64.StdEncoding.EncodeToString(data)
-	s.updated = time.Now()
 	return nil
 }
 
