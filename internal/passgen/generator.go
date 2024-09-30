@@ -28,18 +28,17 @@ type Generator struct {
 func New() (*Generator, error) {
 	const randomBatchLen = 128
 
-	rnd := make([]byte, randomBatchLen*8) // 8 byte for 1 int64
+	rnd := make([]byte, randomBatchLen*4) // 4 byte for 1 int32
 	_, err := rand.Read(rnd)
 	if err != nil {
 		return nil, errors.Wrap(err, "unable to read random sequence")
 	}
 
-	g := Generator{randomInts: make([]int, randomBatchLen)}
-	for i := 0; i < len(rnd); i += 8 {
-		var num int64
-		// Read 8 bytes into num
-		binary.BigEndian.PutUint64(rnd[i:i+8], uint64(num))
-		g.randomInts[i/8] = int(num)
+	g := Generator{randomInts: make([]int, 0, randomBatchLen)}
+	for i := 0; i < len(rnd); i += 4 {
+		// Read 4 bytes into num
+		num := binary.BigEndian.Uint32(rnd[i : i+4])
+		g.randomInts = append(g.randomInts, int(num))
 	}
 	return &g, nil
 }
@@ -52,6 +51,7 @@ func (g *Generator) RandIntn(n int) int {
 		newGen, _ := New()
 		g.randomInts = newGen.randomInts
 	}
+
 	g.randomInts = g.randomInts[1:]
 	return r % n
 }
