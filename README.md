@@ -5,16 +5,16 @@ Passy is a command-line password management tool designed to securely store and 
 ## Getting Started/Installation
 
 Currently avaliable only installation with go: 
-`go install github.com/koss-null/passy@latest`
+```go install github.com/koss-null/passy@latest```
 
 If you want to use Passy as a password generator, just go ahead:
-`passy --create --insane # supports --readable and --safe option, both are pretty safe though`
+```passy --create --insane # supports --readable and --safe option, both are pretty safe though```
 
 If you want to store your passwords in your git repo, you may want to generate a new secret key:
-`passy --keygen /path/to/the/key.aes`
+```passy --keygen /path/to/the/key.aes```
 
 To continue setup you need to open (or create) file:
-`~/.config/passy/config.toml`
+```~/.config/passy/config.toml```
 
 With the following content:
 ```toml
