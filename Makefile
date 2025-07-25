@@ -16,8 +16,14 @@ release-build-release: build-other-platforms
 	upx --best --lzma build/passy
 
 build-other-platforms:
-	GOOS=windows GOARCH=amd64 go build -o build/passy.exe
-	GOOS=darwin GOARCH=amd64 go build -o build/passy_osx
+	CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go build \
+		-ldflags="-s -w -extldflags=-static" \
+		-trimpath \
+		-o build/passy.exe
+	CGO_ENABLED=0 GOOS=darwin GOARCH=amd64 go build \
+		-ldflags="-s -w -extldflags=-static" \
+		-trimpath \
+		-o build/passy_osx
 
 clean:
 	rm -rf build/passy
