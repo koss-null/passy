@@ -14,7 +14,7 @@ If you want to store your passwords in your git repo, you may want to generate a
 ```passy --keygen /path/to/the/key.aes```
 
 To continue setup you need to open (or create) file:
-```~/.config/passy/config.toml```
+```~/.config/passy/config.toml``` with the command `passy --config-edit` or by setting custom config path with `--config` key.
 
 With the following content:
 ```toml
@@ -39,14 +39,22 @@ passy -k
 
 Passy allows you to manage your passwords through various commands. Below are the flags you can use along with additional links for further details.
 
-### -a, --add
+```bash
+passy [flag] [*value] [*flag] [*value]
+* - optional
+```
+
+### -a, --add [key_name]
 Add a new password associated with a specified key. The key separator is '/', allowing for hierarchical key structures (supports pass level key to generate the password automatically).
 
-### --pass
+### --pass [password]
 Specify the password to be added (requires the `-a` flag).
 
-### -p, --get-pass
+### -p, --get-pass [key_name]
 Retrieve and display the password associated with the specified key.
+
+### -d, --delete [key_name]
+Remove key or folder.
 
 ### -k, --show-keys
 List all keys for existing passwords, allowing you to see available entries in the password manager.
@@ -68,6 +76,12 @@ Compose a highly complex password that maximizes security but may be difficult t
 
 ### -i, --interactive
 Launch the Passy application in interactive mode for a guided password management experience [not implemented yet].
+
+### --config
+Specify custom config file.
+
+### --config-edit
+Start yor favorive editor to edit config.
 
 ### --keygen
 Generate a private encryption key and save it to the specified file path for secure password storage.

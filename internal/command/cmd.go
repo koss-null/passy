@@ -13,34 +13,24 @@ import (
 
 func helpString() string {
 	return `Usage:
-  passy [flags]
-
+	passy [flag] [*value] [*flag] [*value]
+* - optional
 Flags:
-  -a, --add                Add a new password associated with a specified key. The key separator is '/', allowing for hierarchical key structures (supports pass level key to generate the password automatically).
-  
-  --pass                   Specify the password to be added (requires -a flag).
-  
-  -p, --get-pass           Retrieve and display the password associated with the specified key.
-
-  -d, --delete             Remove key or folder.
-  
-  -k, --show-keys          List all keys for existing passwords, allowing you to see available entries in the password manager.
-  
-  --show-all               Display all existing keys and their associated passwords (requires -k flag).
-
-  -c, --compose            Generate a new password based on specified criteria, defaulting to a safe level of complexity.
-  
-  --readable               Create a password that is easy to read and remember, while still providing a moderate level of security (can be used with -c or -a for composition).
-  
-  --safe                   Generate a password that balances security and memorability, suitable for general use (can be used with -c or -a).
-  
-  --insane                 Compose a highly complex password that maximizes security but may be difficult to remember (can be used with -c or -a).
-
-  -i, --interactive        Launch the Passy application in interactive mode for a guided password management experience [not implemented yet].
-  
-  --keygen                 Generate a private encryption key and save it to the specified file path for secure password storage.
-  
-  -h, --help               Display this help message with available commands and their descriptions.
+	-a, --add [key_name]	Add a new password associated with a specified key. The key separator is '/', allowing for hierarchical key structures (supports pass level key to generate the password automatically).
+	    --pass [password]	Specify the password to be added (requires -a flag).
+	-p, --get-pass [key_name]	Retrieve and display the password associated with the specified key.
+	-d, --delete [key_name]	Remove key or folder.
+	-k, --show-keys		List all keys for existing passwords, allowing you to see available entries in the password manager.
+	    --show-all	Display all existing keys and their associated passwords (requires -k flag).
+	-c, --compose	Generate a new password based on specified criteria, defaulting to a safe level of complexity.
+		--readable	Create a password that is easy to read and remember, while still providing a moderate level of security (can be used with -c or -a for composition).
+		--safe	Generate a password that balances security and memorability, suitable for general use (can be used with -c or -a).
+		--insane	Compose a highly complex password that maximizes security but may be difficult to remember (can be used with -c or -a).
+	-i, --interactive	Launch the Passy application in interactive mode for a guided password management experience [not implemented yet].
+	    --config	Specify custom config file.
+	    --config-edit	Start yor favorive editor to edit config.
+	    --keygen	Generate a private encryption key and save it to the specified file path for secure password storage.
+	-h, --help	Display this help message with available commands and their descriptions.
 `
 }
 
@@ -70,7 +60,7 @@ func NewCommand() *cobra.Command {
 		},
 	}
 
-	cmd.SetHelpTemplate(helpString())
+	cmd.SetHelpTemplate(fmt.Sprint(helpString()))
 
 	cmd.Flags().BoolVarP(&interactive, "interactive", "i", false, "run Passy in interactive mode [not implemented yet]")
 	cmd.Flags().BoolVarP(&showKeys, "show-keys", "k", false, "show keys for all existing passwords")
