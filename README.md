@@ -1,28 +1,30 @@
 # Passy - Password Manager
 
-Passy is a command-line password management tool designed to securely store and manage your passwords. It allows you to create, retrieve, and manage passwords efficiently, ensuring your sensitive information is protected. This README provides an overview of the available commands, their usage, and examples.
+Passy is a command-line **password management** tool designed to securely store and manage your passwords.  
+It allows you to **create, retrieve, and manage passwords** efficiently, ensuring your sensitive information is protected (with AES-256, that seems to be effective even when the quantum computing will come).  
+This README provides an overview of the available commands, their usage, and examples.  
 
 ## Getting Started/Installation
 
-Currently avaliable only installation with go: 
+Currently avaliable only installation with go:  
 ```go install github.com/koss-null/passy@latest```
 
-If you want to use Passy as a password generator, just go ahead:
+If you want to use Passy as a password generator, just go ahead:  
 ```passy --create --insane # supports --readable and --safe option, both are pretty safe though```
 
-If you want to store your passwords in your git repo, you may want to generate a new secret key:
+If you want to store your passwords in your git repo, you may want to generate a new secret key:  
 ```passy --keygen /path/to/the/key.aes```
 
-To continue setup you need to open (or create) file:
-```~/.config/passy/config.toml``` with the command `passy --config-edit` or by setting custom config path with `--config` key.
+To continue setup you need to open (or create) file: ```~/.config/passy/config.toml```  
+with the command `passy --config-edit` or by setting custom config path with `passy --config [path]` key.
 
-With the following content:
+Config should look like this and is filled with default values:  
 ```toml
 PrivKeyPath = "/path/to/the/key.aes" # can be https link
 GitRepoPath = "git@github.com:your-gh-account/your-repo-name.git"
 ```
 
-Now you can try to store new password in your keystorage:
+Now you can try to store new password in your keystorage:  
 ```bash
 passy -a google.com --pass ChangeMe123
 # also you may generate new password and save it in a single line
