@@ -103,8 +103,7 @@ Here are some common examples of how to use Passy with links to each command for
 
 1. **Add a new password**: 
    ```bash
-   # do not forget to put key in " since > is interpreted as an operator in bash
-   passy --add "myKey>subKey" --pass "mySecretPassword"
+   passy --add "myKey/subKey" --pass "mySecretPassword"
    ```
    [Details on Add Command](#-a--add)
 
