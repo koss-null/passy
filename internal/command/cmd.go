@@ -3,6 +3,8 @@ package command
 import (
 	"fmt"
 	"os"
+	"os/exec"
+	"runtime"
 
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
@@ -27,12 +29,14 @@ Flags:
 		--safe	Generate a password that balances security and memorability, suitable for general use (can be used with -c or -a).
 		--insane	Compose a highly complex password that maximizes security but may be difficult to remember (can be used with -c or -a).
 	-i, --interactive	Launch the Passy application in interactive mode for a guided password management experience [not implemented yet].
-	    --config	Specify custom config file.
+	    --config [path]	Specify custom config file.
 	    --config-edit	Start yor favorive editor to edit config.
 	    --keygen	Generate a private encryption key and save it to the specified file path for secure password storage.
 	-h, --help	Display this help message with available commands and their descriptions.
 `
 }
+
+const defaultConfigFile = "~/.config/passy/config.toml"
 
 func NewCommand() *cobra.Command {
 	var (
@@ -43,6 +47,8 @@ func NewCommand() *cobra.Command {
 		addPass           string
 		deletePass        string
 		thePass           string
+		configPath        string
+		editConfig        bool
 		keyGen            string
 		composePass       bool
 		passLevelReadable bool
@@ -69,6 +75,8 @@ func NewCommand() *cobra.Command {
 	cmd.Flags().StringVarP(&addPass, "add", "a", "", "add password by key, key separator is '/' (supports pass level key to generate the pass automatically)")
 	cmd.Flags().StringVarP(&deletePass, "delete", "d", "", "delete key or key folder, key separator is '/'")
 	cmd.Flags().StringVar(&thePass, "pass", "", "[-a] set password")
+	cmd.Flags().StringVar(&configPath, "config", "", "Specify custom config file")
+	cmd.Flags().BoolVar(&editConfig, "config-edit", false, "Start your favorite editor to edit config")
 	cmd.Flags().StringVar(&keyGen, "keygen", "", "generate the private encryption key on given path")
 	cmd.Flags().BoolVarP(&composePass, "compose", "c", false, "compose password (safe level by default)")
 	cmd.Flags().BoolVar(&passLevelReadable, "readable", false, "[-c|-a] compose password that is readable, easy to remember and pretty safe")
@@ -77,13 +85,47 @@ func NewCommand() *cobra.Command {
 
 	// Parse the command
 	cmd.RunE = func(cmd *cobra.Command, args []string) error {
-		return executeCommand(interactive, showKeys, showAll, getPass, addPass, deletePass, thePass, keyGen, composePass, passLevelReadable, passLevelSafe, passLevelInsane)
+		return executeCommand(
+			interactive,
+			showKeys,
+			showAll,
+			getPass,
+			addPass,
+			deletePass,
+			thePass,
+			configPath,
+			editConfig,
+			keyGen,
+			composePass,
+			passLevelReadable,
+			passLevelSafe,
+			passLevelInsane,
+		)
 	}
 
 	return cmd
 }
 
-func executeCommand(interactive, showKeys, showAll bool, getPass, addPass, deletePass, thePass, keyGen string, composePass, passLevelReadable, passLevelSafe, passLevelInsane bool) error {
+func executeCommand(
+	interactive bool,
+	showKeys bool,
+	showAll bool,
+	getPass string,
+	addPass string,
+	deletePass string,
+	thePass string,
+	configPath string,
+	editConfig bool,
+	keyGen string,
+	composePass bool,
+	passLevelReadable bool,
+	passLevelSafe bool,
+	passLevelInsane bool,
+) error {
+	if configPath == "" {
+		configPath = defaultConfigFile
+	}
+
 	if interactive {
 		return fmt.Errorf("interactive mode is not implemented")
 	}
@@ -93,19 +135,23 @@ func executeCommand(interactive, showKeys, showAll bool, getPass, addPass, delet
 	}
 
 	if showKeys {
-		return handleShowKeys(showAll)
+		return handleShowKeys(configPath, showAll)
+	}
+
+	if editConfig {
+		return handleEditConfig(configPath)
 	}
 
 	if getPass != "" {
-		return handleGetPass(getPass)
+		return handleGetPass(configPath, getPass)
 	}
 
 	if addPass != "" {
-		return handleAddPassword(addPass, thePass, passLevelReadable, passLevelSafe, passLevelInsane)
+		return handleAddPassword(configPath, addPass, thePass, passLevelReadable, passLevelSafe, passLevelInsane)
 	}
 
 	if deletePass != "" {
-		return handleDeletePassword(deletePass)
+		return handleDeletePassword(configPath, deletePass)
 	}
 
 	if keyGen != "" {
@@ -134,8 +180,8 @@ func handlePasswordComposition(passLevelReadable, passLevelSafe, passLevelInsane
 	return nil
 }
 
-func handleShowKeys(showAll bool) error {
-	flds, err := folders()
+func handleShowKeys(configPath string, showAll bool) error {
+	flds, err := folders(configPath)
 	if err != nil {
 		return err
 	}
@@ -147,8 +193,69 @@ func handleShowKeys(showAll bool) error {
 	return nil
 }
 
-func handleGetPass(key string) error {
-	flds, err := folders()
+// Open the file in the default editor
+func handleEditConfig(configPath string) error {
+	// create new config to open it with default values, if not existed
+	if err := storage.CheckConfigExistOrCreateNew(configPath); err != nil {
+		return errors.Wrapf(err, "unable to achieve file")
+	}
+
+	totalFailMsg := fmt.Sprintf(
+		"Unable to find any favorite editor, please edit the file by yourself.\n"+
+			"Default config is in %q", defaultConfigFile,
+	)
+
+	var cmd *exec.Cmd
+	switch runtime.GOOS {
+	case "windows":
+		fmt.Println("Trying Windows callouts")
+		cmd = exec.Command("notepad.exe", configPath)
+	case "darwin": // macOS
+		fmt.Println("Trying macOS callouts")
+		cmd = exec.Command("open", "-e", configPath)
+	default: // *nix
+		fmt.Println("Trying *nix callouts")
+
+		editors := []string{"editor", "nano", "vim", "vi"}
+		var lastErr error
+
+		for _, editor := range editors {
+			cmd = exec.Command(editor, configPath)
+
+			// interactive term use
+			cmd.Stdin = os.Stdin
+			cmd.Stdout = os.Stdout
+			cmd.Stderr = os.Stderr
+
+			// check if the editor exists
+			if path, err := exec.LookPath(editor); err == nil {
+				fmt.Printf("Trying editor: %s (%s)\n", editor, path)
+				err = cmd.Run()
+				if err == nil {
+					return nil
+				}
+				lastErr = err
+				fmt.Printf("Editor %s failed: %v\n", editor, err)
+			} else {
+				fmt.Printf("Editor %s not found\n", editor)
+			}
+		}
+
+		if lastErr != nil {
+			return errors.Wrapf(lastErr, totalFailMsg)
+		}
+		return errors.New(totalFailMsg)
+	}
+
+	// For Windows and macOS
+	cmd.Stdin = os.Stdin
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	return errors.Wrapf(cmd.Run(), totalFailMsg)
+}
+
+func handleGetPass(configPath, key string) error {
+	flds, err := folders(configPath)
 	if err != nil {
 		return err
 	}
@@ -161,7 +268,10 @@ func handleGetPass(key string) error {
 	return nil
 }
 
-func handleAddPassword(addPass, thePass string, passLevelReadable, passLevelSafe, passLevelInsane bool) error {
+func handleAddPassword(
+	configPath, addPass, thePass string,
+	passLevelReadable, passLevelSafe, passLevelInsane bool,
+) error {
 	gen, err := passgen.New()
 	if err != nil {
 		return fmt.Errorf("unable to create generator: %v", err)
@@ -182,16 +292,20 @@ func handleAddPassword(addPass, thePass string, passLevelReadable, passLevelSafe
 	if thePass != "" {
 		pass = thePass
 	}
-	return savePass(addPass, pass)
+	return savePass(configPath, addPass, pass)
 }
 
-func handleDeletePassword(key string) error {
+func handleDeletePassword(configPath, key string) error {
 	fmt.Printf("do you really want to delete %q [y/N]\n", key)
 	var ans string
-	fmt.Scanln(&ans)
+	_, err := fmt.Scanln(&ans)
+	if err != nil {
+		fmt.Printf("wow, we have some troubles reading your input")
+		ans = "no"
+	}
 
 	if ans == "y" || ans == "Y" || ans == "yes" {
-		cfg, err := storage.ParseConfig()
+		cfg, err := storage.ParseConfig(configPath)
 		if err != nil {
 			return errors.Wrap(err, "failed to parse config")
 		}
@@ -236,8 +350,8 @@ func handleKeyGeneration(keyGen string) error {
 	return nil
 }
 
-func folders() (*storage.Folder, error) {
-	cfg, err := storage.ParseConfig()
+func folders(configPath string) (*storage.Folder, error) {
+	cfg, err := storage.ParseConfig(configPath)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to parse config")
 	}
@@ -254,8 +368,8 @@ func folders() (*storage.Folder, error) {
 	return folders, nil
 }
 
-func savePass(key, pass string) error {
-	cfg, err := storage.ParseConfig()
+func savePass(configPath, key, pass string) error {
+	cfg, err := storage.ParseConfig(configPath)
 	if err != nil {
 		return errors.Wrap(err, "failed to parse config")
 	}

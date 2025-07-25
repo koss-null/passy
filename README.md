@@ -77,7 +77,7 @@ Compose a highly complex password that maximizes security but may be difficult t
 ### -i, --interactive
 Launch the Passy application in interactive mode for a guided password management experience [not implemented yet].
 
-### --config
+### --config [path]
 Specify custom config file.
 
 ### --config-edit

@@ -11,8 +11,6 @@ import (
 	"github.com/BurntSushi/toml"
 )
 
-const defaultConfigFile = "~/.config/passy/config.toml"
-
 const mockConfig = `PrivKeyPath = "/path/to/private/key.pem" # can be https link
 GitRepoPath = "https://github.com/user/repository.git"`
 
@@ -22,17 +20,17 @@ type Config struct {
 }
 
 // ParseConfig reads the config file, fills config fields, and validates them.
-func ParseConfig() (*Config, error) {
+func ParseConfig(configPath string) (*Config, error) {
 	var config Config
 
 	// Expand the default config file path
-	configFilePath, err := expandPath(defaultConfigFile)
+	configFilePath, err := expandPath(configPath)
 	if err != nil {
 		return nil, fmt.Errorf("error expanding config file path: %v", err)
 	}
 
 	// create mock config if not exist
-	if err = checkConfigExistOrCreateNew(configFilePath); err != nil {
+	if err = CheckConfigExistOrCreateNew(configFilePath); err != nil {
 		return nil, err
 	}
 
@@ -49,7 +47,7 @@ func ParseConfig() (*Config, error) {
 	return &config, nil
 }
 
-func checkConfigExistOrCreateNew(configFilePath string) (err error) {
+func CheckConfigExistOrCreateNew(configFilePath string) (err error) {
 	var configFile *os.File
 	if configFile, err = os.OpenFile(configFilePath, os.O_RDONLY, fs.ModeType); err != nil {
 		if !errors.Is(err, os.ErrNotExist) {
