@@ -5,105 +5,250 @@ import (
 	"os"
 	"os/exec"
 	"runtime"
+	"strings"
 
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
+	"golang.org/x/term"
 
 	"github.com/koss-null/passy/internal/passgen"
 	"github.com/koss-null/passy/internal/storage"
 )
 
-func helpString() string {
-	return `Usage:
-	passy [flag] [*value] [*flag] [*value]
-* - optional
-Flags:
-	-a, --add [key_name]	Add a new password associated with a specified key. The key separator is '/', allowing for hierarchical key structures (supports pass level key to generate the password automatically).
-	    --pass [password]	Specify the password to be added (requires -a flag).
-	-p, --get-pass [key_name]	Retrieve and display the password associated with the specified key.
-	-d, --delete [key_name]	Remove key or folder.
-	-k, --show-keys		List all keys for existing passwords, allowing you to see available entries in the password manager.
-	    --show-all	Display all existing keys and their associated passwords (requires -k flag).
-	-c, --compose	Generate a new password based on specified criteria, defaulting to a safe level of complexity.
-		--readable	Create a password that is easy to read and remember, while still providing a moderate level of security (can be used with -c or -a for composition).
-		--safe	Generate a password that balances security and memorability, suitable for general use (can be used with -c or -a).
-		--insane	Compose a highly complex password that maximizes security but may be difficult to remember (can be used with -c or -a).
-	-i, --interactive	Launch the Passy application in interactive mode for a guided password management experience [not implemented yet].
-	    --config [path]	Specify custom config file.
-	    --config-edit	Start yor favorive editor to edit config.
-	    --keygen	Generate a private encryption key and save it to the specified file path for secure password storage.
-	-h, --help	Display this help message with available commands and their descriptions.
-`
-}
-
 const defaultConfigFile = "~/.config/passy/config.toml"
 
 func NewCommand() *cobra.Command {
 	var (
-		interactive       bool
-		showKeys          bool
-		showAll           bool
-		getPass           string
-		addPass           string
-		deletePass        string
-		thePass           string
-		configPath        string
-		editConfig        bool
-		keyGen            string
-		composePass       bool
-		passLevelReadable bool
-		passLevelSafe     bool
-		passLevelInsane   bool
+		interactive      bool
+		listKeys         bool
+		showAll          bool
+		getPassword      string
+		addPassword      string
+		deletePassword   string
+		passwordValue    string
+		configPath       string
+		editConfig       bool
+		generateKey      string
+		generatePassword bool
+		passReadable     bool
+		passSafe         bool
+		passStrong       bool
 	)
 
 	cmd := &cobra.Command{
 		Use:   "passy",
-		Short: "A command-line password manager",
-		Long:  `Passy is a password manager that allows you to generate, store, and retrieve passwords securely from your git repo.`,
-		Run: func(cmd *cobra.Command, args []string) {
-			// Default action if no subcommand is specified
-			_ = cmd.Help()
-		},
+		Short: "Secure command-line password manager",
+		Long: `Passy is an encrypted password manager that helps you:
+- Generate strong, customizable passwords
+- Securely store and organize credentials
+- Quickly retrieve passwords when needed
+- Manage hierarchical entries using '/' as separator
+
+All data is encrypted and can be synced across devices.`,
 	}
 
-	cmd.SetHelpTemplate(fmt.Sprint(helpString()))
+	// Disable default alphabetical sorting
+	cmd.Flags().SortFlags = false
 
-	cmd.Flags().BoolVarP(&interactive, "interactive", "i", false, "run Passy in interactive mode [not implemented yet]")
-	cmd.Flags().BoolVarP(&showKeys, "show-keys", "k", false, "show keys for all existing passwords")
-	cmd.Flags().BoolVar(&showAll, "show-all", false, "[-k] show all existing keys and passwords")
-	cmd.Flags().StringVarP(&getPass, "get-pass", "p", "", "show pass by key")
-	cmd.Flags().StringVarP(&addPass, "add", "a", "", "add password by key, key separator is '/' (supports pass level key to generate the pass automatically)")
-	cmd.Flags().StringVarP(&deletePass, "delete", "d", "", "delete key or key folder, key separator is '/'")
-	cmd.Flags().StringVar(&thePass, "pass", "", "[-a] set password")
-	cmd.Flags().StringVar(&configPath, "config", "", "Specify custom config file")
-	cmd.Flags().BoolVar(&editConfig, "config-edit", false, "Start your favorite editor to edit config")
-	cmd.Flags().StringVar(&keyGen, "keygen", "", "generate the private encryption key on given path")
-	cmd.Flags().BoolVarP(&composePass, "compose", "c", false, "compose password (safe level by default)")
-	cmd.Flags().BoolVar(&passLevelReadable, "readable", false, "[-c|-a] compose password that is readable, easy to remember and pretty safe")
-	cmd.Flags().BoolVar(&passLevelSafe, "safe", false, "[-c|-a] compose password that is safe and have chances to be remembered")
-	cmd.Flags().BoolVar(&passLevelInsane, "insane", false, "[-c|-a] compose password that is insanly complex")
+	passwordManagementFlags := cmd.Flags()
+	passwordGenerationFlags := cmd.Flags()
+	configurationFlags := cmd.Flags()
+	advancedFlags := cmd.Flags()
 
-	// Parse the command
+	passwordManagementFlags.StringVarP(&addPassword, "add", "a", "",
+		"Add new password entry with specified key path (e.g., 'email/gmail')")
+	passwordManagementFlags.StringVar(&passwordValue, "password", "",
+		"Specify password value directly (must be used with --add)")
+	passwordManagementFlags.StringVarP(&getPassword, "get", "g", "",
+		"Retrieve password by its key path (e.g., 'email/gmail')")
+	passwordManagementFlags.StringVarP(&deletePassword, "delete", "d", "",
+		"Permanently remove password entry or folder by key path")
+	passwordManagementFlags.BoolVarP(&listKeys, "list", "l", false,
+		"Display all stored password keys (hides passwords by default)")
+	passwordManagementFlags.BoolVar(&showAll, "show-all", false,
+		"Reveal passwords when listing (must be used with --list)")
+
+	passwordGenerationFlags.BoolVarP(&generatePassword, "generate", "n", false,
+		"Create new random password (uses 'safe' level by default)")
+	passwordGenerationFlags.BoolVar(&passReadable, "readable", false,
+		"Generate memorable password (combine with --generate or --add)")
+	passwordGenerationFlags.BoolVar(&passSafe, "safe", false,
+		"Generate balanced security/memorability password (default)")
+	passwordGenerationFlags.BoolVar(&passStrong, "strong", false,
+		"Generate maximum security password (harder to remember)")
+
+	configurationFlags.StringVar(&configPath, "config", "",
+		"Specify alternative configuration file path")
+	configurationFlags.BoolVar(&editConfig, "edit-config", false,
+		"Open configuration file in your default editor")
+
+	advancedFlags.StringVar(&generateKey, "generate-key", "",
+		"Generate new encryption key file at specified location")
+	advancedFlags.BoolVarP(&interactive, "interactive", "i", false,
+		"Launch interactive mode (menu-driven interface)")
+
+	// Help Configuration
+	cmd.SetHelpFunc(func(cmd *cobra.Command, args []string) {
+		fmt.Print(buildHelpText(cmd))
+	})
+
+	cmd.SetUsageFunc(func(cmd *cobra.Command) error {
+		fmt.Println("Basic Usage:")
+		fmt.Println("  passy [command] [flags]")
+		fmt.Println("\nCommon Commands:")
+		fmt.Println("  passy --add email/gmail --password 'mypass'  # Add new password")
+		fmt.Println("  passy --get email/gmail                     # Retrieve password")
+		fmt.Println("  passy --generate --strong                   # Create strong password")
+		return nil
+	})
+
 	cmd.RunE = func(cmd *cobra.Command, args []string) error {
 		return executeCommand(
 			interactive,
-			showKeys,
+			listKeys,
 			showAll,
-			getPass,
-			addPass,
-			deletePass,
-			thePass,
+			getPassword,
+			addPassword,
+			deletePassword,
+			passwordValue,
 			configPath,
 			editConfig,
-			keyGen,
-			composePass,
-			passLevelReadable,
-			passLevelSafe,
-			passLevelInsane,
+			generateKey,
+			generatePassword,
+			passReadable,
+			passSafe,
+			passStrong,
 		)
 	}
 
 	return cmd
+}
+
+func buildHelpText(cmd *cobra.Command) string {
+	var helpText strings.Builder
+
+	// Get terminal width
+	width := 80
+	if fd := int(os.Stdout.Fd()); term.IsTerminal(fd) {
+		if w, _, err := term.GetSize(fd); err == nil && w > 0 {
+			width = w
+		}
+	}
+
+	// Header
+	helpText.WriteString(cmd.Long + "\n\n")
+
+	// Usage
+	helpText.WriteString("Usage:\n  passy [flags]\n\n")
+
+	// Calculate column widths dynamically
+	flagColWidth := 20                       // minimum space for flags
+	descColWidth := width - flagColWidth - 4 // 4 = 2 spaces before + 2 spaces after flags
+
+	// Password Management Section
+	helpText.WriteString("Password Management:\n")
+	printFlagSection(&helpText, cmd.Flags(), []string{
+		"add",
+		"password",
+		"get",
+		"delete",
+		"list",
+		"show-all",
+	}, flagColWidth, descColWidth)
+
+	// Password Generation Section
+	helpText.WriteString("\nPassword Generation:\n")
+	printFlagSection(&helpText, cmd.Flags(), []string{
+		"generate",
+		"readable",
+		"safe",
+		"strong",
+	}, flagColWidth, descColWidth)
+
+	// Configuration Section
+	helpText.WriteString("\nConfiguration:\n")
+	printFlagSection(&helpText, cmd.Flags(), []string{
+		"config",
+		"edit-config",
+	}, flagColWidth, descColWidth)
+
+	// Advanced Section
+	helpText.WriteString("\nAdvanced:\n")
+	printFlagSection(&helpText, cmd.Flags(), []string{
+		"generate-key",
+		"interactive",
+	}, flagColWidth, descColWidth)
+
+	// Help flag
+	helpText.WriteString("\nHelp:\n")
+	printFlagSection(&helpText, cmd.Flags(), []string{"help"}, flagColWidth, descColWidth)
+
+	return helpText.String()
+}
+
+func printFlagSection(helpText *strings.Builder, flagSet *pflag.FlagSet, flagNames []string, flagColWidth, descColWidth int) {
+	for _, name := range flagNames {
+		flag := flagSet.Lookup(name)
+		if flag == nil {
+			continue
+		}
+
+		// Build flag representation
+		flagRepr := buildFlagRepresentation(flag)
+
+		// Wrap the description
+		desc := flag.Usage
+		wrappedDesc := wordWrap(desc, descColWidth, flagColWidth)
+
+		// Print first line
+		fmt.Fprintf(helpText, "  %-*s  %s\n", flagColWidth, flagRepr, wrappedDesc[0])
+		// Print additional lines if description was wrapped
+		for _, line := range wrappedDesc[1:] {
+			fmt.Fprintf(helpText, "  %-*s  %s\n", flagColWidth, "", line)
+		}
+	}
+}
+
+func buildFlagRepresentation(flag *pflag.Flag) string {
+	if flag.Shorthand != "" && flag.Shorthand != " " {
+		return fmt.Sprintf("-%s, --%s", flag.Shorthand, flag.Name)
+	}
+	return fmt.Sprintf("    --%s", flag.Name)
+}
+
+func wordWrap(text string, lineWidth, indent int) []string {
+	words := strings.Fields(text)
+	if len(words) == 0 {
+		return []string{""}
+	}
+
+	var lines []string
+	currentLine := ""
+	currentLength := 0
+
+	for _, word := range words {
+		if currentLength+len(word)+1 > lineWidth && currentLength > 0 {
+			lines = append(lines, currentLine)
+			currentLine = ""
+			currentLength = 0
+		}
+
+		if currentLength == 0 {
+			// First word in line
+			currentLine = word
+			currentLength = len(word)
+			continue
+		}
+		currentLine += " " + word
+		currentLength += len(word) + 1
+	}
+
+	if currentLine != "" {
+		lines = append(lines, currentLine)
+	}
+
+	return lines
 }
 
 func executeCommand(
