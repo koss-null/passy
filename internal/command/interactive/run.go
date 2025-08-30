@@ -1,271 +1,171 @@
 package interactive
 
 import (
-	"fmt"
+	"os"
+	"strings"
 
-	"github.com/gdamore/tcell/v2"
-	"github.com/rivo/tview"
-
-	"github.com/koss-null/passy/internal/command/impl"
+	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
 )
 
-func Run(configPath string) error {
-	app := tview.NewApplication()
+type chapter string
 
-	// Main menu
-	list := tview.NewList().
-		AddItem("Add Password", "Add new password entry", 'a', func() {
-			showAddPasswordForm(app, configPath)
-		}).
-		AddItem("Get Password", "Retrieve stored password", 'g', func() {
-			showGetPasswordForm(app, configPath)
-		}).
-		AddItem("Generate Password", "Create random password", 'n', func() {
-			showPasswordGenerationOptions(app, configPath)
-		}).
-		AddItem("List Keys", "Show all stored keys", 'l', func() {
-			showListKeysOptions(app, configPath)
-		}).
-		AddItem("Delete Password", "Remove password entry", 'd', func() {
-			showDeletePasswordForm(app, configPath)
-		}).
-		AddItem("Edit Configuration", "Modify config file", 'c', func() {
-			go executeWithLoading(app, configPath, "Editing config...", func() error {
-				return impl.HandleEditConfig(configPath)
-			})
-		}).
-		AddItem("Generate Key", "Create encryption key", 'k', func() {
-			showGenerateKeyForm(app, configPath)
-		}).
-		AddItem("Quit", "Exit application", 'q', func() {
-			app.Stop()
-		})
+const (
+	ChapterMain          = chapter("Main Menu")
+	ChapterUnimplemented = chapter("Under Construction")
+	ChapterFinal         = chapter("Quitting")
+)
 
-	list.SetBorder(true).SetTitle("═══   Passy - Interactive Mode   ═══   exit with ctrl+c   ═══").SetTitleAlign(tview.AlignLeft)
-	list.SetMainTextColor(tcell.ColorWhite).
-		SetSecondaryTextColor(tcell.ColorLightBlue).
-		SetShortcutColor(tcell.ColorBlue)
+type cursor uint16
 
-	return app.SetRoot(list, true).SetFocus(list).Run()
+func (c *cursor) Up() {
+	if *c > 0 {
+		*c--
+	}
 }
 
-func showAddPasswordForm(app *tview.Application, configPath string) {
-	form := tview.NewForm().
-		AddInputField("Key Path (e.g., email/gmail):", "", 40, nil, nil).
-		AddPasswordField("Password (leave empty to generate):", "", 40, '*', nil).
-		AddCheckbox("Generate Readable Password", false, nil).
-		AddCheckbox("Generate Safe Password", true, nil).
-		AddCheckbox("Generate Strong Password", false, nil)
-
-	form.SetBorder(true).SetTitle(" Add Password ").SetTitleAlign(tview.AlignLeft)
-	form.SetButtonsAlign(tview.AlignCenter)
-
-	form.AddButton("Save", func() {
-		key := form.GetFormItem(0).(*tview.InputField).GetText()
-		password := form.GetFormItem(1).(*tview.InputField).GetText()
-		readable := form.GetFormItem(2).(*tview.Checkbox).IsChecked()
-		safe := form.GetFormItem(3).(*tview.Checkbox).IsChecked()
-		strong := form.GetFormItem(4).(*tview.Checkbox).IsChecked()
-
-		if key == "" {
-			showErrorModal(app, configPath, "Key path is required")
-			return
-		}
-
-		go executeWithLoading(app, configPath, "Adding password...", func() error {
-			return impl.HandleAddPassword(configPath, key, password, readable, safe, strong)
-		})
-	})
-
-	form.AddButton("Cancel", func() {
-		app.SetRoot(createMainMenu(configPath), true)
-	})
-
-	app.SetRoot(form, true).SetFocus(form)
+func (c *cursor) Down(threshold int) {
+	if *c < cursor(threshold) {
+		*c++
+	}
 }
 
-func showGetPasswordForm(app *tview.Application, configPath string) {
-	form := tview.NewForm().
-		AddInputField("Key Path to retrieve:", "", 40, nil, nil)
-
-	form.SetBorder(true).SetTitle(" Get Password ").SetTitleAlign(tview.AlignLeft)
-
-	form.AddButton("Retrieve", func() {
-		key := form.GetFormItem(0).(*tview.InputField).GetText()
-		if key == "" {
-			showErrorModal(app, configPath, "Key path is required")
-			return
-		}
-
-		go executeWithLoading(app, configPath, "Retrieving password...", func() error {
-			return impl.HandleGetPass(configPath, key)
-		})
-	})
-
-	form.AddButton("Cancel", func() {
-		app.SetRoot(createMainMenu(configPath), true)
-	})
-
-	app.SetRoot(form, true).SetFocus(form)
+type option struct {
+	name    string
+	next    chapter
+	handler func() tea.Cmd
 }
 
-func showDeletePasswordForm(app *tview.Application, configPath string) {
-	form := tview.NewForm().
-		AddInputField("Key Path to delete:", "", 40, nil, nil)
-
-	form.SetBorder(true).SetTitle(" Delete Password ").SetTitleAlign(tview.AlignLeft)
-
-	form.AddButton("Delete", func() {
-		key := form.GetFormItem(0).(*tview.InputField).GetText()
-		if key == "" {
-			showErrorModal(app, configPath, "Key path is required")
-			return
-		}
-
-		// Show confirmation modal
-		showConfirmationModal(
-			app,
-			configPath,
-			fmt.Sprintf("Delete '%s' permanently?", key),
-			func() {
-				go executeWithLoading(app, configPath, "Deleting...", func() error {
-					return impl.HandleDeletePassword(configPath, key)
-				})
-			},
-		)
-	})
-
-	form.AddButton("Cancel", func() {
-		app.SetRoot(createMainMenu(configPath), true)
-	})
-
-	app.SetRoot(form, true).SetFocus(form)
+type model struct {
+	cursor
+	chapter
+	options  map[chapter][]option
+	selected map[chapter]map[int]struct{}
 }
 
-func showPasswordGenerationOptions(app *tview.Application, configPath string) {
-	form := tview.NewForm().
-		AddCheckbox("Readable (memorable)", false, nil).
-		AddCheckbox("Safe (balanced)", true, nil).
-		AddCheckbox("Strong (maximum security)", false, nil)
-
-	form.SetBorder(true).SetTitle(" Generate Password ").SetTitleAlign(tview.AlignLeft)
-
-	form.AddButton("Generate", func() {
-		readable := form.GetFormItem(0).(*tview.Checkbox).IsChecked()
-		safe := form.GetFormItem(1).(*tview.Checkbox).IsChecked()
-		strong := form.GetFormItem(2).(*tview.Checkbox).IsChecked()
-
-		go executeWithLoading(app, configPath, "Generating password...", func() error {
-			return impl.HandlePasswordComposition(readable, safe, strong)
-		})
-	})
-
-	form.AddButton("Cancel", func() {
-		app.SetRoot(createMainMenu(configPath), true)
-	})
-
-	app.SetRoot(form, true).SetFocus(form)
+func (m *model) Init() tea.Cmd {
+	return nil
 }
 
-func showListKeysOptions(app *tview.Application, configPath string) {
-	form := tview.NewForm().
-		AddCheckbox("Show passwords (reveal all)", false, nil)
+func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	if m.chapter == ChapterFinal {
+		return m, tea.Quit
+	}
 
-	form.SetBorder(true).SetTitle(" List Keys ").SetTitleAlign(tview.AlignLeft)
-
-	form.AddButton("List", func() {
-		showAll := form.GetFormItem(0).(*tview.Checkbox).IsChecked()
-
-		go executeWithLoading(app, configPath, "Loading keys...", func() error {
-			return impl.HandleShowKeys(configPath, showAll)
-		})
-	})
-
-	form.AddButton("Cancel", func() {
-		app.SetRoot(createMainMenu(configPath), true)
-	})
-
-	app.SetRoot(form, true).SetFocus(form)
-}
-
-func showGenerateKeyForm(app *tview.Application, configPath string) {
-	form := tview.NewForm().
-		AddInputField("Key file path:", "", 40, nil, nil)
-
-	form.SetBorder(true).SetTitle(" Generate Encryption Key ").SetTitleAlign(tview.AlignLeft)
-
-	form.AddButton("Generate", func() {
-		keyPath := form.GetFormItem(0).(*tview.InputField).GetText()
-		if keyPath == "" {
-			showErrorModal(app, configPath, "Key file path is required")
-			return
-		}
-
-		go executeWithLoading(app, configPath, "Generating key...", func() error {
-			return impl.HandleKeyGeneration(keyPath)
-		})
-	})
-
-	form.AddButton("Cancel", func() {
-		app.SetRoot(createMainMenu(configPath), true)
-	})
-
-	app.SetRoot(form, true).SetFocus(form)
-}
-
-func executeWithLoading(app *tview.Application, configPath, message string, task func() error) {
-	modal := tview.NewModal().
-		SetText(message).
-		AddButtons(nil) // No buttons for loading
-
-	app.QueueUpdateDraw(func() {
-		app.SetRoot(modal, false)
-	})
-
-	err := task()
-
-	app.QueueUpdateDraw(func() {
-		if err != nil {
-			showErrorModal(app, configPath, err.Error())
-		} else {
-			app.SetRoot(createMainMenu(configPath), true)
-		}
-	})
-}
-
-func showErrorModal(app *tview.Application, configPath, message string) {
-	modal := tview.NewModal().
-		SetText("Error: " + message).
-		AddButtons([]string{"OK"}).
-		SetDoneFunc(func(buttonIndex int, buttonLabel string) {
-			app.SetRoot(createMainMenu(configPath), true)
-		})
-	app.SetRoot(modal, false)
-}
-
-func showConfirmationModal(app *tview.Application, configPath, message string, confirmFunc func()) {
-	modal := tview.NewModal().
-		SetText(message).
-		AddButtons([]string{"Yes", "No"}).
-		SetDoneFunc(func(buttonIndex int, buttonLabel string) {
-			if buttonLabel == "Yes" {
-				confirmFunc()
-			} else {
-				app.SetRoot(createMainMenu(configPath), true)
+	switch msg := msg.(type) {
+	case tea.KeyMsg:
+		switch msg.String() {
+		case "ctrl+c", "q":
+			m.chapter = ChapterFinal
+			return m, tea.Quit
+		case "up", "k":
+			m.Up()
+		case "down", "j":
+			length := 0
+			if opts, ok := m.options[m.chapter]; ok {
+				length = len(opts) - 1
 			}
-		})
-	app.SetRoot(modal, false)
+			m.Down(length)
+		case "enter", " ":
+			if opts, ok := m.options[m.chapter]; ok {
+				var cmd tea.Cmd
+				if opts[m.cursor].handler != nil {
+					cmd = opts[m.cursor].handler()
+				}
+				m.chapter = opts[m.cursor].next
+				m.cursor = 0
+
+				// Final chapter quits immediately
+				if m.chapter == ChapterFinal {
+					return m, tea.Quit
+				}
+				return m, cmd
+			}
+		}
+	}
+
+	return m, nil
 }
 
-func createMainMenu(configPath string) tview.Primitive {
-	list := tview.NewList().
-		AddItem("Add Password", "Add new password entry", 'a', func() {
-			showAddPasswordForm(tview.NewApplication(), configPath)
-		}).
-		AddItem("Quit", "Exit application", 'q', func() {
-			tview.NewApplication().Stop()
-		})
+func (m *model) View() string {
+	// Define styles
+	titleStyle := lipgloss.NewStyle().
+		Foreground(lipgloss.Color("205")).
+		Bold(true).
+		Padding(0, 1)
 
-	list.SetBorder(true).SetTitle(" Passy - Interactive Mode ")
-	return list
+	cursorStyle := lipgloss.NewStyle().
+		Foreground(lipgloss.Color("212")).
+		Bold(true)
+
+	normalStyle := lipgloss.NewStyle().
+		Foreground(lipgloss.Color("250"))
+
+	dividerStyle := lipgloss.NewStyle().
+		Foreground(lipgloss.Color("240")).
+		SetString("┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈")
+
+	helpStyle := lipgloss.NewStyle().
+		Foreground(lipgloss.Color("241")).
+		Italic(true)
+
+	var s strings.Builder
+
+	// Title
+	title := titleStyle.Render(string(m.chapter))
+	s.WriteString(title + "\n")
+	s.WriteString(dividerStyle.String() + "\n")
+	// Options
+	if opts, ok := m.options[m.chapter]; ok {
+		for i := range opts {
+			if i == int(m.cursor) {
+				s.WriteString(cursorStyle.Render("▶ " + opts[i].name))
+			} else {
+				s.WriteString(normalStyle.Render("  " + opts[i].name))
+			}
+			s.WriteString("\n")
+		}
+	}
+	// Divider
+	s.WriteString("\n")
+	s.WriteString(dividerStyle.String())
+	s.WriteString("\n")
+	// Help text
+	helpText := helpStyle.Render("↑/k: up • ↓/j: down • enter: select • q/ctrl+c: quit")
+	s.WriteString(helpText)
+	s.WriteString("\n")
+
+	return s.String()
+}
+
+func Run(configPath string) error {
+	progr := tea.NewProgram(&model{
+		cursor:  cursor(0),
+		chapter: ChapterMain,
+		options: map[chapter][]option{
+			ChapterMain: {
+				{"Generate Password", ChapterUnimplemented, nil},
+				{"Add new password", ChapterUnimplemented, nil},
+				{"See passwords", ChapterUnimplemented, nil},
+				{"Quit", ChapterFinal, func() tea.Cmd {
+					return tea.Quit
+				}},
+			},
+			ChapterUnimplemented: {
+				{"Back to Main Menu", ChapterMain, nil},
+				{"Quit", ChapterFinal, func() tea.Cmd {
+					return tea.Quit
+				}},
+			},
+			ChapterFinal: {
+				{"Quit", ChapterFinal, func() tea.Cmd {
+					os.Exit(0)
+					return nil
+				}},
+			},
+		},
+	})
+
+	_, err := progr.Run()
+	return err
 }
