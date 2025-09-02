@@ -72,7 +72,13 @@ func buildHelpText(cmd *cobra.Command) string {
 	return helpText.String()
 }
 
-func printFlagSection(helpText *strings.Builder, flagSet *pflag.FlagSet, flagNames []string, flagColWidth, descColWidth int) {
+func printFlagSection(
+	helpText *strings.Builder,
+	flagSet *pflag.FlagSet,
+	flagNames []string,
+	flagColWidth int,
+	descColWidth int,
+) {
 	for _, name := range flagNames {
 		flag := flagSet.Lookup(name)
 		if flag == nil {
@@ -84,7 +90,7 @@ func printFlagSection(helpText *strings.Builder, flagSet *pflag.FlagSet, flagNam
 
 		// Wrap the description
 		desc := flag.Usage
-		wrappedDesc := wordWrap(desc, descColWidth, flagColWidth)
+		wrappedDesc := wordWrap(desc, descColWidth)
 
 		// Print first line
 		fmt.Fprintf(helpText, "  %-*s  %s\n", flagColWidth, flagRepr, wrappedDesc[0])
@@ -102,7 +108,7 @@ func buildFlagRepresentation(flag *pflag.Flag) string {
 	return fmt.Sprintf("    --%s", flag.Name)
 }
 
-func wordWrap(text string, lineWidth, indent int) []string {
+func wordWrap(text string, lineWidth int) []string {
 	words := strings.Fields(text)
 	if len(words) == 0 {
 		return []string{""}

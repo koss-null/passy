@@ -60,33 +60,28 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (m *model) View() string {
 	// Define styles
-	var s strings.Builder
+	var sb strings.Builder
 
 	// Title
-	title := Styles().title.Render(string(m.chapter))
-	s.WriteString(title + "\n")
-	s.WriteString(Styles().divider.String() + "\n")
+	addStrL(&sb, title(m.chapter))
+	addStrL(&sb, styles().divider.String())
 	// Options
 	if opts, ok := m.options[m.chapter]; ok {
 		for i := range opts {
 			if i == int(m.cursor) {
-				s.WriteString(Styles().cursor.Render("▶ " + opts[i].name))
-			} else {
-				s.WriteString(Styles().normal.Render("  " + opts[i].name))
+				addStrL(&sb, styles().cursor.Render("▶ "+opts[i].name))
+				continue
 			}
-			s.WriteString("\n")
+			addStrL(&sb, styles().normal.Render("  "+opts[i].name))
 		}
 	}
 	// Divider
-	s.WriteString("\n")
-	s.WriteString(Styles().divider.String())
-	s.WriteString("\n")
+	addLStrL(&sb, styles().divider.String())
 	// Help text
-	helpText := Styles().help.Render("↑/k: up • ↓/j: down • enter: select • q/ctrl+c: quit")
-	s.WriteString(helpText)
-	s.WriteString("\n")
+	helpText := styles().help.Render("↑/k: up • ↓/j: down • enter: select • q/ctrl+c: quit")
+	addStrL(&sb, helpText)
 
-	return s.String()
+	return sb.String()
 }
 
 type chapter string

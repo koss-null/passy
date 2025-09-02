@@ -68,7 +68,7 @@ All data is encrypted and can be synced across devices.`,
 		"Generate memorable password (combine with --generate or --add)")
 	passwordGenerationFlags.BoolVar(&passSafe, "safe", false,
 		"Generate balanced security/memorability password (default)")
-	passwordGenerationFlags.BoolVar(&passStrong, "strong", false,
+	passwordGenerationFlags.BoolVar(&passStrong, "insane", false,
 		"Generate maximum security password (harder to remember)")
 
 	configurationFlags.StringVar(&configPath, "config", "",

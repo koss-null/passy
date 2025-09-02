@@ -16,5 +16,5 @@ func (c *cursor) down(threshold int) {
 
 func (c *cursor) setStart() {
 	var zero cursor
-	c = &zero
+	*c = zero
 }

@@ -64,7 +64,7 @@ List all keys for existing passwords, allowing you to see available entries in t
 ### --show-all
 Display all existing keys and their associated passwords (requires the `-k` flag).
 
-### -c, --compose
+### --generate
 Generate a new password based on specified criteria, defaulting to a safe level of complexity.
 
 ### --readable
