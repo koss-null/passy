@@ -1,6 +1,6 @@
 package interactive
 
-type cursor uint16
+type cursor int16
 
 func (c *cursor) up() {
 	if *c > 0 {

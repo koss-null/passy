@@ -7,10 +7,9 @@ import (
 )
 
 type model struct {
-	cursor   cursor
-	chapter  chapter
-	options  map[chapter][]option
-	selected map[chapter]map[int]struct{}
+	cursor  cursor
+	chapter chapter
+	options map[chapter][]option
 }
 
 func (m *model) Init() tea.Cmd {
@@ -67,12 +66,8 @@ func (m *model) View() string {
 	addStrL(&sb, styles().divider.String())
 	// Options
 	if opts, ok := m.options[m.chapter]; ok {
-		for i := range opts {
-			if i == int(m.cursor) {
-				addStrL(&sb, styles().cursor.Render("▶ "+opts[i].name))
-				continue
-			}
-			addStrL(&sb, styles().normal.Render("  "+opts[i].name))
+		for i, opt := range opts {
+			m.AddOptionStr(&sb, i, opt)
 		}
 	}
 	// Divider
@@ -84,26 +79,22 @@ func (m *model) View() string {
 	return sb.String()
 }
 
-type chapter string
-
-const (
-	ChapterMain          = chapter("Main Menu")
-	ChapterUnimplemented = chapter("Under Construction")
-	ChapterFinal         = chapter("Quitting")
-)
-
-func (c *chapter) isFinal() bool {
-	return *c == ChapterFinal
-}
-
-func (c *chapter) change(nextChap chapter) bool {
-	// TODO: should add some state machine here
-	*c = nextChap
-	return true
-}
-
-type option struct {
-	name    string
-	next    chapter
-	handler func() tea.Cmd
+// OptionStr adds the line(s) for the sequential option to the strings.Builder
+func (m *model) AddOptionStr(sb *strings.Builder, optNum int, opt option) {
+	switch opt.optType {
+	case OptTypeNextChapter, OptTypeFinish:
+		cursorSymbol := "  " // empty spacing for the option item
+		style := styles().normal
+		if int(m.cursor) == optNum {
+			cursorSymbol = "▶ "
+			style = styles().cursor
+		}
+		addStrL(sb, style.Render(cursorSymbol+opt.text))
+	case OptTypeUnselectableString:
+		addStrL(sb, styles().normal.Render(opt.text))
+	case OptTypeUnknown:
+		addStrL(sb, styles().normal.Render("option type is Unknown"))
+	default:
+		addStrL(sb, styles().normal.Render("option not implemented: "+opt.text))
+	}
 }

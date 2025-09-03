@@ -12,21 +12,21 @@ func Run(configPath string) error {
 		chapter: ChapterMain,
 		options: map[chapter][]option{
 			ChapterMain: {
-				{"Generate Password", ChapterUnimplemented, nil},
-				{"Add new password", ChapterUnimplemented, nil},
-				{"See passwords", ChapterUnimplemented, nil},
-				{"Quit", ChapterFinal, func() tea.Cmd {
+				{OptTypeNextChapter, "Generate Password", ChapterUnimplemented, nil},
+				{OptTypeNextChapter, "Add new password", ChapterUnimplemented, nil},
+				{OptTypeNextChapter, "See passwords", ChapterUnimplemented, nil},
+				{OptTypeFinish, "Quit", ChapterFinal, func() tea.Cmd {
 					return tea.Quit
 				}},
 			},
 			ChapterUnimplemented: {
-				{"Back to Main Menu", ChapterMain, nil},
-				{"Quit", ChapterFinal, func() tea.Cmd {
+				{OptTypeNextChapter, "Back to Main Menu", ChapterMain, nil},
+				{OptTypeFinish, "Quit", ChapterFinal, func() tea.Cmd {
 					return tea.Quit
 				}},
 			},
 			ChapterFinal: {
-				{"Quit", ChapterFinal, func() tea.Cmd {
+				{OptTypeFinish, "Quit", ChapterFinal, func() tea.Cmd {
 					os.Exit(0)
 					return nil
 				}},
