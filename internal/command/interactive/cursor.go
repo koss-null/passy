@@ -14,7 +14,15 @@ func (c *cursor) down(threshold int) {
 	}
 }
 
-func (c *cursor) setStart() {
+func (c *cursor) setStart(opts []option) {
 	var zero cursor
 	*c = zero
+	for i := range opts[:len(opts)-1] {
+		// skip all unselectables
+		if opts[i].optType == OptTypeUnselectableString {
+			*c = cursor(i + 1)
+			continue
+		}
+		return
+	}
 }

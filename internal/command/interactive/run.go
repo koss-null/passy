@@ -1,37 +1,156 @@
 package interactive
 
 import (
-	"os"
-
 	tea "github.com/charmbracelet/bubbletea"
+
+	"github.com/koss-null/passy/internal/passgen"
 )
 
 func Run(configPath string) error {
 	progr := tea.NewProgram(&model{
-		cursor:  cursor(0),
-		chapter: ChapterMain,
+		cursor:      cursor(0),
+		chapter:     ChapterMain,
+		chapterType: OptTypeNextChapter,
 		options: map[chapter][]option{
 			ChapterMain: {
-				{OptTypeNextChapter, "Generate Password", ChapterUnimplemented, nil},
-				{OptTypeNextChapter, "Add new password", ChapterUnimplemented, nil},
-				{OptTypeNextChapter, "See passwords", ChapterUnimplemented, nil},
-				{OptTypeFinish, "Quit", ChapterFinal, func() tea.Cmd {
-					return tea.Quit
-				}},
+				{
+					optType: OptTypeNextChapter,
+					text:    "Generate Password",
+					next:    ChapterPasswordGen,
+					handler: nil,
+				},
+				{
+					optType: OptTypeNextChapter,
+					text:    "Add new password",
+					next:    ChapterUnimplemented,
+					handler: nil,
+				},
+				{
+					optType: OptTypeNextChapter,
+					text:    "See passwords",
+					next:    ChapterUnimplemented,
+					handler: nil,
+				},
+				{
+					optType: OptTypeFinish,
+					text:    "Quit",
+					next:    ChapterFinal,
+					handler: func(*model) (*model, tea.Cmd) {
+						return nil, tea.Quit
+					},
+				},
+			},
+			ChapterPasswordGen: {
+				{
+					optType: OptTypeNextChapter,
+					text:    "Readable",
+					next:    ChapterShowGeneratedPass,
+					handler: func(m *model) (*model, tea.Cmd) {
+						gen, err := passgen.New()
+						if err != nil {
+							// TODO: insert error except of pass
+						}
+						m.context[ContextKeyPass] = gen.GenReadablePass()
+						m.context[ContextKeyLastPassStrength] = "Readable"
+						return m, nil
+					},
+				},
+				{
+					optType: OptTypeNextChapter,
+					text:    "Safe",
+					next:    ChapterShowGeneratedPass,
+					handler: func(m *model) (*model, tea.Cmd) {
+						gen, err := passgen.New()
+						if err != nil {
+							// TODO: insert error except of pass
+						}
+						m.context[ContextKeyPass] = gen.GenSafePass()
+						m.context[ContextKeyLastPassStrength] = "Safe"
+						return m, nil
+					},
+				},
+				{
+					optType: OptTypeNextChapter,
+					text:    "Insane",
+					next:    ChapterShowGeneratedPass,
+					handler: func(m *model) (*model, tea.Cmd) {
+						gen, err := passgen.New()
+						if err != nil {
+							// TODO: insert error except of pass
+						}
+						m.context[ContextKeyPass] = gen.GenInsanePass()
+						m.context[ContextKeyLastPassStrength] = "Insane"
+						return m, nil
+					},
+				},
+			},
+			ChapterShowGeneratedPass: {
+				{
+					optType: OptTypeUnselectableString,
+					// TODO: insert generated path here
+					text:    ContextKeyPass.Template(),
+					next:    "",
+					handler: nil,
+				},
+				{
+					optType: OptTypeNextChapter,
+					text:    "One more",
+					next:    ChapterShowGeneratedPass,
+					handler: func(m *model) (*model, tea.Cmd) {
+						gen, err := passgen.New()
+						if err != nil {
+							// TODO: insert error except of pass
+						}
+						switch m.context[ContextKeyLastPassStrength] {
+						case "Readable":
+							m.context[ContextKeyPass] = gen.GenReadablePass()
+						case "Safe":
+							m.context[ContextKeyPass] = gen.GenSafePass()
+						case "Insane":
+							m.context[ContextKeyPass] = gen.GenInsanePass()
+						}
+						return m, nil
+					},
+				},
+				{
+					optType: OptTypeNextChapter,
+					text:    "Back",
+					next:    ChapterPasswordGen,
+				},
+				{
+					optType: OptTypeNextChapter,
+					text:    "Main menu",
+					next:    ChapterMain,
+				},
 			},
 			ChapterUnimplemented: {
-				{OptTypeNextChapter, "Back to Main Menu", ChapterMain, nil},
-				{OptTypeFinish, "Quit", ChapterFinal, func() tea.Cmd {
-					return tea.Quit
-				}},
+				{
+					optType: OptTypeNextChapter,
+					text:    "Back to Main Menu",
+					next:    ChapterMain,
+					handler: nil,
+				},
+				{
+					optType: OptTypeFinish,
+					text:    "Quit",
+					next:    ChapterFinal,
+					handler: func(*model) (*model, tea.Cmd) {
+						return nil, tea.Quit
+					},
+				},
 			},
 			ChapterFinal: {
-				{OptTypeFinish, "Quit", ChapterFinal, func() tea.Cmd {
-					os.Exit(0)
-					return nil
-				}},
+				{
+					optType: OptTypeFinish,
+					text:    "Quit",
+					next:    ChapterFinal,
+					handler: func(*model) (*model, tea.Cmd) {
+						return nil, tea.Quit
+					},
+				},
 			},
 		},
+		context: make(map[contextKey]string),
 	})
 
 	_, err := progr.Run()

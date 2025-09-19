@@ -7,9 +7,12 @@ import (
 )
 
 type model struct {
-	cursor  cursor
-	chapter chapter
-	options map[chapter][]option
+	cursor      cursor
+	chapter     chapter
+	chapterType optType
+	options     map[chapter][]option
+
+	context map[contextKey]string
 }
 
 func (m *model) Init() tea.Cmd {
@@ -17,64 +20,35 @@ func (m *model) Init() tea.Cmd {
 }
 
 func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-	// Final chapter quits immediately
-	if m.chapter.isFinal() {
-		return m, tea.Quit
+	switch m.chapterType {
+	// FIXME: the name of the chapter doesn't fit here;
+	// I should split model types with optional types and
+	// make a mapper
+	case OptTypeNextChapter:
+		return handleOptionListInput(m, msg)
+	case OptTypeInputWindow:
+		return handleOptionInput(m, msg)
 	}
-
-	switch msg := msg.(type) {
-	case tea.KeyMsg:
-		switch msg.String() {
-		case "ctrl+c", "q":
-			m.chapter.isFinal()
-			return m, tea.Quit
-		case "up", "k":
-			m.cursor.up()
-		case "down", "j":
-			length := 0
-			if opts, ok := m.options[m.chapter]; ok {
-				length = len(opts) - 1
-			}
-			m.cursor.down(length)
-		case "enter", " ":
-			if opts, ok := m.options[m.chapter]; ok {
-				var cmd tea.Cmd
-				if opts[m.cursor].handler != nil {
-					cmd = opts[m.cursor].handler()
-				}
-				m.chapter.change(opts[m.cursor].next)
-				m.cursor.setStart()
-
-				// Final chapter quits immediately
-				if m.chapter.isFinal() {
-					return m, tea.Quit
-				}
-				return m, cmd
-			}
-		}
-	}
-
 	return m, nil
 }
 
 func (m *model) View() string {
-	// Define styles
 	var sb strings.Builder
 
 	// Title
 	addStrL(&sb, title(m.chapter))
 	addStrL(&sb, styles().divider.String())
+
 	// Options
 	if opts, ok := m.options[m.chapter]; ok {
 		for i, opt := range opts {
 			m.AddOptionStr(&sb, i, opt)
 		}
 	}
-	// Divider
+
+	// Divider + Help text
 	addLStrL(&sb, styles().divider.String())
-	// Help text
-	helpText := styles().help.Render("↑/k: up • ↓/j: down • enter: select • q/ctrl+c: quit")
-	addStrL(&sb, helpText)
+	addStrL(&sb, styles().help.Render("↑/k: up • ↓/j: down • enter: select • q/ctrl+c: quit"))
 
 	return sb.String()
 }
@@ -91,7 +65,14 @@ func (m *model) AddOptionStr(sb *strings.Builder, optNum int, opt option) {
 		}
 		addStrL(sb, style.Render(cursorSymbol+opt.text))
 	case OptTypeUnselectableString:
-		addStrL(sb, styles().normal.Render(opt.text))
+		text := opt.text
+		for _, ctxKey := range allContextKeys {
+			text = ctxKey.Substitute(text, m.context[ctxKey])
+		}
+		addStrL(sb, "╔═"+strings.Repeat("═", len(text))+"═╗")
+		// FIXME: need multiple insertions to support multiline strings here
+		addStrL(sb, "║ "+styles().normal.Render(text)+" ║")
+		addStrL(sb, "╚═"+strings.Repeat("═", len(text))+"═╝")
 	case OptTypeUnknown:
 		addStrL(sb, styles().normal.Render("option type is Unknown"))
 	default:
