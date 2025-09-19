@@ -2,6 +2,7 @@ package interactive
 
 import (
 	"strings"
+	"unicode/utf8"
 
 	tea "github.com/charmbracelet/bubbletea"
 )
@@ -69,10 +70,10 @@ func (m *model) AddOptionStr(sb *strings.Builder, optNum int, opt option) {
 		for _, ctxKey := range allContextKeys {
 			text = ctxKey.Substitute(text, m.context[ctxKey])
 		}
-		addStrL(sb, "╔═"+strings.Repeat("═", len(text))+"═╗")
+		addStrL(sb, "╔═"+strings.Repeat("═", utf8.RuneCountInString(text))+"═╗")
 		// FIXME: need multiple insertions to support multiline strings here
 		addStrL(sb, "║ "+styles().normal.Render(text)+" ║")
-		addStrL(sb, "╚═"+strings.Repeat("═", len(text))+"═╝")
+		addStrL(sb, "╚═"+strings.Repeat("═", utf8.RuneCountInString(text))+"═╝")
 	case OptTypeUnknown:
 		addStrL(sb, styles().normal.Render("option type is Unknown"))
 	default:
