@@ -35,8 +35,8 @@ func Run(configPath string) error {
 					optType: OptTypeFinish,
 					text:    "Quit",
 					next:    ChapterFinal,
-					handler: func(*model) (*model, tea.Cmd) {
-						return nil, tea.Quit
+					handler: func(m *model) (*model, tea.Cmd) {
+						return m, tea.Quit
 					},
 				},
 			},
@@ -48,7 +48,8 @@ func Run(configPath string) error {
 					handler: func(m *model) (*model, tea.Cmd) {
 						gen, err := passgen.New()
 						if err != nil {
-							// TODO: insert error except of pass
+							m.context[ContextKeyPass] = gen.GenReadablePass()
+							return m, tea.Quit
 						}
 						m.context[ContextKeyPass] = gen.GenReadablePass()
 						m.context[ContextKeyLastPassStrength] = "Readable"
@@ -62,7 +63,8 @@ func Run(configPath string) error {
 					handler: func(m *model) (*model, tea.Cmd) {
 						gen, err := passgen.New()
 						if err != nil {
-							// TODO: insert error except of pass
+							m.context[ContextKeyPass] = gen.GenReadablePass()
+							return m, tea.Quit
 						}
 						m.context[ContextKeyPass] = gen.GenSafePass()
 						m.context[ContextKeyLastPassStrength] = "Safe"
@@ -76,7 +78,8 @@ func Run(configPath string) error {
 					handler: func(m *model) (*model, tea.Cmd) {
 						gen, err := passgen.New()
 						if err != nil {
-							// TODO: insert error except of pass
+							m.context[ContextKeyPass] = gen.GenReadablePass()
+							return m, tea.Quit
 						}
 						m.context[ContextKeyPass] = gen.GenInsanePass()
 						m.context[ContextKeyLastPassStrength] = "Insane"
@@ -87,7 +90,6 @@ func Run(configPath string) error {
 			ChapterShowGeneratedPass: {
 				{
 					optType: OptTypeUnselectableString,
-					// TODO: insert generated path here
 					text:    ContextKeyPass.Template(),
 					next:    "",
 					handler: nil,
@@ -99,7 +101,8 @@ func Run(configPath string) error {
 					handler: func(m *model) (*model, tea.Cmd) {
 						gen, err := passgen.New()
 						if err != nil {
-							// TODO: insert error except of pass
+							m.context[ContextKeyPass] = gen.GenReadablePass()
+							return m, tea.Quit
 						}
 						switch m.context[ContextKeyLastPassStrength] {
 						case "Readable":
@@ -134,8 +137,8 @@ func Run(configPath string) error {
 					optType: OptTypeFinish,
 					text:    "Quit",
 					next:    ChapterFinal,
-					handler: func(*model) (*model, tea.Cmd) {
-						return nil, tea.Quit
+					handler: func(m *model) (*model, tea.Cmd) {
+						return m, tea.Quit
 					},
 				},
 			},
@@ -144,8 +147,8 @@ func Run(configPath string) error {
 					optType: OptTypeFinish,
 					text:    "Quit",
 					next:    ChapterFinal,
-					handler: func(*model) (*model, tea.Cmd) {
-						return nil, tea.Quit
+					handler: func(m *model) (*model, tea.Cmd) {
+						return m, tea.Quit
 					},
 				},
 			},

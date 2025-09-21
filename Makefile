@@ -5,6 +5,9 @@ all: clean build
 build:
 	go build -o build/passy ./
 
+run: build
+	./build/passy -i
+
 build-gccgo: main.go
 	go build -gcflags="-B -C" -ldflags="-s -w" -o build/passy ./
 

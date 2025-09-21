@@ -1,8 +1,17 @@
 package interactive
 
-import tea "github.com/charmbracelet/bubbletea"
+import (
+	"fmt"
+
+	tea "github.com/charmbracelet/bubbletea"
+)
 
 func handleOptionListInput(m *model, msg tea.Msg) (tea.Model, tea.Cmd) {
+	// NPE protection
+	if m == nil {
+		fmt.Println("[Unexpected Exception] handleOptionListInput is called with nil model")
+		return m, tea.Quit
+	}
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		switch msg.String() {

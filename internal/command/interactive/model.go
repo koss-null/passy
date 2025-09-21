@@ -1,5 +1,7 @@
 package interactive
 
+// interactive implements interactive TUI interaction with the passy
+
 import (
 	"strings"
 	"unicode/utf8"
