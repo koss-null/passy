@@ -22,13 +22,13 @@ func Run(configPath string) error {
 				},
 				{
 					optType: OptTypeNextChapter,
-					text:    "Add new password",
+					text:    "Add New Password",
 					next:    ChapterUnimplemented,
 					handler: nil,
 				},
 				{
 					optType: OptTypeNextChapter,
-					text:    "See passwords",
+					text:    "See Passwords",
 					next:    ChapterSeePasswords,
 					handler: func(m *model) (*model, tea.Cmd) {
 						m.context[ContextKeyConfigPath] = configPath
