@@ -3,6 +3,7 @@ package interactive
 import (
 	tea "github.com/charmbracelet/bubbletea"
 
+	"github.com/koss-null/passy/internal/command/impl"
 	"github.com/koss-null/passy/internal/passgen"
 )
 
@@ -28,8 +29,18 @@ func Run(configPath string) error {
 				{
 					optType: OptTypeNextChapter,
 					text:    "See passwords",
-					next:    ChapterUnimplemented,
-					handler: nil,
+					next:    ChapterSeePasswords,
+					handler: func(m *model) (*model, tea.Cmd) {
+						m.context[ContextKeyConfigPath] = configPath
+						flds, err := impl.Folders(configPath)
+						if err != nil {
+							m.context[ContextKeyPasswordList] = err.Error()
+							// TODO: maybe the second arg should not be nil
+							return m, nil
+						}
+						m.context[ContextKeyPasswordList] = flds.String("")()
+						return m, nil
+					},
 				},
 				{
 					optType: OptTypeFinish,
@@ -124,6 +135,36 @@ func Run(configPath string) error {
 					optType: OptTypeNextChapter,
 					text:    "Main menu",
 					next:    ChapterMain,
+				},
+			},
+			ChapterSeePasswords: {
+				{
+					optType: OptTypeUnselectableString,
+					text:    ContextKeyPasswordList.Template(),
+					next:    "",
+					handler: nil,
+				},
+				{
+					optType: OptTypeNextChapter,
+					text:    "Refresh",
+					next:    ChapterSeePasswords,
+					handler: func(m *model) (*model, tea.Cmd) {
+						m.context[ContextKeyConfigPath] = configPath
+						flds, err := impl.Folders(configPath)
+						if err != nil {
+							m.context[ContextKeyPasswordList] = err.Error()
+							// TODO: maybe the second arg should not be nil
+							return m, nil
+						}
+						m.context[ContextKeyPasswordList] = flds.String("")()
+						return m, nil
+					},
+				},
+				{
+					optType: OptTypeNextChapter,
+					text:    "Back to Main Menu",
+					next:    ChapterMain,
+					handler: nil,
 				},
 			},
 			ChapterUnimplemented: {

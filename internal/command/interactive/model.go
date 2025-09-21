@@ -72,9 +72,14 @@ func (m *model) AddOptionStr(sb *strings.Builder, optNum int, opt option) {
 		for _, ctxKey := range allContextKeys {
 			text = ctxKey.Substitute(text, m.context[ctxKey])
 		}
+		if len(text) == 0 {
+			break
+		}
 		addStrL(sb, "╔═"+strings.Repeat("═", utf8.RuneCountInString(text))+"═╗")
-		// FIXME: need multiple insertions to support multiline strings here
-		addStrL(sb, "║ "+styles().normal.Render(text)+" ║")
+		// support multiline string
+		for _, t := range strings.Split(text, "\n") {
+			addStrL(sb, "║ "+styles().normal.Render(t)+" ║")
+		}
 		addStrL(sb, "╚═"+strings.Repeat("═", utf8.RuneCountInString(text))+"═╝")
 	case OptTypeUnknown:
 		addStrL(sb, styles().normal.Render("option type is Unknown"))

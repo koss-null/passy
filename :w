@@ -48,7 +48,7 @@ func ParseConfig(configPath string) (*Config, error) {
 }
 
 func CheckConfigExistOrCreateNew(configFilePath string) (err error) {
-	if configFile, err := os.OpenFile(configFilePath, os.O_RDONLY, fs.ModeType); err != nil {
+    if configFile, err := os.OpenFile(configFilePath, os.O_RDONLY, fs.ModeType); err != nil {
 		if !errors.Is(err, os.ErrNotExist) {
 			return fmt.Errorf("error opening config file: %v", err)
 		}

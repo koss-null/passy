@@ -29,7 +29,7 @@ func HandlePasswordComposition(passLevelReadable, passLevelSafe, passLevelInsane
 }
 
 func HandleGetPass(configPath, key string) error {
-	flds, err := folders(configPath)
+	flds, err := Folders(configPath)
 	if err != nil {
 		return err
 	}
@@ -143,7 +143,7 @@ func savePass(configPath, key, pass string) error {
 }
 
 func HandleShowKeys(configPath string, showAll bool) error {
-	flds, err := folders(configPath)
+	flds, err := Folders(configPath)
 	if err != nil {
 		return err
 	}
@@ -155,7 +155,7 @@ func HandleShowKeys(configPath string, showAll bool) error {
 	return nil
 }
 
-func folders(configPath string) (*storage.Folder, error) {
+func Folders(configPath string) (*storage.Folder, error) {
 	cfg, err := storage.ParseConfig(configPath)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to parse config")

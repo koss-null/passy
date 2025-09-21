@@ -5,8 +5,9 @@ type chapter string
 const (
 	ChapterMain              = chapter("Main Menu")
 	ChapterUnimplemented     = chapter("Under Construction")
-	ChapterPasswordGen       = chapter("Choose pathword strength")
-	ChapterShowGeneratedPass = chapter("Generated password:")
+	ChapterPasswordGen       = chapter("Choose Password Strength")
+	ChapterShowGeneratedPass = chapter("Generated Password:")
+	ChapterSeePasswords      = chapter("See Passwords")
 	ChapterFinal             = chapter("Quitting")
 )
 

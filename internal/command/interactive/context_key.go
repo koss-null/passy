@@ -11,11 +11,15 @@ const (
 	// don't forget to add new value to allContextKeys
 	ContextKeyPass             = contextKey("Pass")
 	ContextKeyLastPassStrength = contextKey("LastPassStrength")
+	ContextKeyPasswordList     = contextKey("PasswordList")
+	ContextKeyConfigPath       = contextKey("ConfigPath")
 )
 
 var allContextKeys = []contextKey{
 	ContextKeyPass,
 	ContextKeyLastPassStrength,
+	ContextKeyPasswordList,
+	ContextKeyConfigPath,
 }
 
 // Substitute takes target string, finds ck.Template occurences
